@@ -21,7 +21,9 @@ docker build -t jszk-site .
 docker run -d --name jszk-site -p 3001:3001 -v jszk-data:/app/data jszk-site
 ```
 
-打开 http://localhost:3001（Express 直接托管前端构建产物）。
+打开 http://localhost:3001（后端经 Bun 编译为单文件可执行程序，镜像 ~130MB，Express 托管前端产物）。
+
+> 开发与 `npm start` 仍走 Node，无需安装 Bun；只有 Docker 构建阶段使用 Bun。
 
 - 成绩数据持久化在 `jszk-data` 卷（容器内 `/app/data`）
 - 备份成绩：`docker cp jszk-site:/app/data/scores.json ./scores.json`

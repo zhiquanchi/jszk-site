@@ -4,8 +4,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import multer from 'multer';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.join(__dirname, '..');
+// 根目录解析：Bun 单文件编译产物里 import.meta.url 指向虚拟文件系统（$bunfs），
+// 此时以可执行文件所在目录为根；常规 node 运行则以源码上一级为根。可用 APP_ROOT 覆盖。
+function resolveRoot() {
+  if (import.meta.url.includes('$bunfs')) return path.dirname(process.execPath);
+  return path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+}
+
+const ROOT = process.env.APP_ROOT || resolveRoot();
 const DATA_DIR = path.join(ROOT, 'data');
 const SCORES_FILE = path.join(DATA_DIR, 'scores.json');
 const CLIENT_DIST = path.join(ROOT, 'client', 'dist');
