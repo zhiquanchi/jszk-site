@@ -1,0 +1,8 @@
+node_modules
+client/node_modules
+client/dist
+tessdata
+data/scores.json
+.git
+*.log
+.DS_Store

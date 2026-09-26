@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Alert, Card, Checkbox, Col, List, Progress, Row, Table, Tag, Typography } from 'antd';
 
 const STORE_KEY = 'jszk-degree-actions-v1';
 
@@ -20,84 +21,108 @@ export default function Degree({ degree }) {
   return (
     <div>
       <header className="page-head">
-        <h2>学位攻略</h2>
-        <p className="page-desc">主考院校：{degree.school} · 目标：工学学士学位</p>
+        <Typography.Title level={3} style={{ margin: 0 }}>
+          学位攻略
+        </Typography.Title>
+        <Typography.Text type="secondary">
+          主考院校：{degree.school} · 目标：工学学士学位
+        </Typography.Text>
       </header>
 
-      <h3 className="section-title">📏 申请条件</h3>
-      <section className="req-grid">
+      <Typography.Title level={4} className="section-title">
+        📏 申请条件
+      </Typography.Title>
+      <Row gutter={[14, 14]}>
         {degree.requirements.map((r) => (
-          <div className="req-card" key={r.t}>
-            <span
-              className={`tag tag-${r.tag === '硬指标' ? 'must' : r.tag === '替代' ? 'alt' : 'time'}`}
-            >
-              {r.tag}
-            </span>
-            <h4>{r.t}</h4>
-            <p>{r.d}</p>
-          </div>
+          <Col key={r.t} xs={24} sm={12} lg={8}>
+            <Card size="small" title={r.t}>
+              <Tag
+                color={r.tag === '硬指标' ? 'red' : r.tag === '替代' ? 'orange' : 'blue'}
+                style={{ marginBottom: 8 }}
+              >
+                {r.tag}
+              </Tag>
+              <br />
+              <Typography.Text type="secondary">{r.d}</Typography.Text>
+            </Card>
+          </Col>
         ))}
-      </section>
+      </Row>
 
-      <h3 className="section-title">📖 必须实考的学位课程</h3>
-      <div className="card table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>代码</th>
-              <th>课程</th>
-              <th>学分</th>
-              <th>分数目标</th>
-            </tr>
-          </thead>
-          <tbody>
-            {degree.degreeCourses.map((c) => (
-              <tr key={c.code}>
-                <td className="mono">{c.code}</td>
-                <td>{c.name}</td>
-                <td>{c.credits}</td>
-                <td>
-                  <b>{c.target}</b>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Typography.Title level={4} className="section-title">
+        📖 必须实考的学位课程
+      </Typography.Title>
+      <Table
+        rowKey="code"
+        size="middle"
+        pagination={false}
+        dataSource={degree.degreeCourses}
+        columns={[
+          {
+            title: '代码',
+            dataIndex: 'code',
+            width: 100,
+            render: (c) => <Typography.Text code>{c}</Typography.Text>,
+          },
+          { title: '课程', dataIndex: 'name' },
+          { title: '学分', dataIndex: 'credits', width: 80 },
+          {
+            title: '分数目标',
+            dataIndex: 'target',
+            render: (t) => <b>{t}</b>,
+          },
+        ]}
+      />
 
-      <div className="card strategy">
-        <h4>🇬🇧 英语策略</h4>
-        <p>{degree.englishStrategy}</p>
-      </div>
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginTop: 14 }}
+        message="🇬🇧 英语策略"
+        description={degree.englishStrategy}
+      />
 
-      <h3 className="section-title">🚫 红线（碰了就没学位）</h3>
-      <div className="card warn">
-        <ul className="plain-list">
-          {degree.redLines.map((r) => (
-            <li key={r}>{r}</li>
-          ))}
-        </ul>
-      </div>
+      <Typography.Title level={4} className="section-title">
+        🚫 红线（碰了就没学位）
+      </Typography.Title>
+      <Alert
+        type="error"
+        showIcon
+        description={
+          <List
+            size="small"
+            dataSource={degree.redLines}
+            renderItem={(r) => <List.Item>{r}</List.Item>}
+          />
+        }
+      />
 
-      <h3 className="section-title">
-        ✅ 行动清单<span className="section-sub">{doneCount}/{degree.actions.length} 已完成</span>
-      </h3>
-      <div className="card">
-        <ul className="check-list">
-          {degree.actions.map((a, i) => (
-            <li key={a} className={done[i] ? 'done' : ''}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={!!done[i]}
-                  onChange={() => setDone((d) => ({ ...d, [i]: !d[i] }))}
-                />
-                <span>{a}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <Typography.Title level={4} className="section-title">
+        ✅ 行动清单
+        <Tag style={{ marginLeft: 8 }}>
+          {doneCount}/{degree.actions.length} 已完成
+        </Tag>
+      </Typography.Title>
+      <Card size="small">
+        <Progress percent={Math.round((doneCount / degree.actions.length) * 100)} size="small" />
+        <List
+          dataSource={degree.actions}
+          renderItem={(a, i) => (
+            <List.Item
+              style={{ padding: '8px 0', borderBottom: '1px dashed #f0f0f0' }}
+            >
+              <Checkbox
+                checked={!!done[i]}
+                onChange={() => setDone((d) => ({ ...d, [i]: !d[i] }))}
+              >
+                <span style={done[i] ? { color: '#999', textDecoration: 'line-through' } : {}}>
+                  {a}
+                </span>
+              </Checkbox>
+            </List.Item>
+          )}
+        />
+      </Card>
     </div>
   );
 }

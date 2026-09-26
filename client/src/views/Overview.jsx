@@ -1,3 +1,5 @@
+import { Alert, Card, Col, List, Row, Statistic, Tag, Typography } from 'antd';
+
 export default function Overview({ meta, courses, degree, scores }) {
   const totalCredits = courses.reduce((s, c) => s + c.credits, 0);
   const degreeCount = courses.filter((c) => c.degree).length;
@@ -5,16 +7,16 @@ export default function Overview({ meta, courses, degree, scores }) {
   const recorded = new Set(scores.map((s) => s.code)).size;
 
   const stats = [
-    { label: '课程总门数', value: courses.length, unit: '门' },
-    { label: '总学分', value: totalCredits, unit: '分' },
-    { label: '学位课程', value: degreeCount, unit: '门' },
-    { label: '实践课', value: practiceCount, unit: '门' },
-    { label: '已录成绩', value: recorded, unit: `/${courses.length} 门` },
+    { label: '课程总门数', value: courses.length, suffix: '门' },
+    { label: '总学分', value: totalCredits, suffix: '分' },
+    { label: '学位课程', value: degreeCount, suffix: '门' },
+    { label: '实践课', value: practiceCount, suffix: '门' },
+    { label: '已录成绩', value: recorded, suffix: `/${courses.length} 门` },
   ];
 
   const conclusions = [
     {
-      tone: 'ok',
+      tone: 'green',
       title: '✅ 可以放心免考（不影响学位）',
       items: [
         '三门政治课：15040 / 15043 / 15044（走学历免考）',
@@ -23,7 +25,7 @@ export default function Overview({ meta, courses, degree, scores }) {
       ],
     },
     {
-      tone: 'caution',
+      tone: 'orange',
       title: '⚠️ 谨慎：英语（专升本）13000',
       items: [
         '默认别免 —— 实考冲 70 分以上',
@@ -32,7 +34,7 @@ export default function Overview({ meta, courses, degree, scores }) {
       ],
     },
     {
-      tone: 'never',
+      tone: 'red',
       title: '⛔ 不能免 / 免了丢学位',
       items: [
         '四门学位课程：13000 英语、13003 数据结构与算法、13015 计算机系统原理、13180 操作系统',
@@ -42,77 +44,93 @@ export default function Overview({ meta, courses, degree, scores }) {
     },
   ];
 
-  const reminders = [
-    {
-      icon: '🗓️',
-      t: '2026 下半年免考窗口',
-      d: '9 月前后（通告已于 8 月底发布）—— 立即核对是否截止；错过则等 2027 上半年（预计 3 月初）',
-    },
-    { icon: '⏳', t: '免考时限', d: '必须在申请毕业前至少半年办完' },
-    { icon: '🎓', t: '学位申请时限', d: '取得毕业证书后一年内提交' },
-  ];
-
   return (
     <div>
       <header className="page-head">
-        <h2>总览</h2>
-        <p className="page-desc">
+        <Typography.Title level={3} style={{ margin: 0 }}>
+          总览
+        </Typography.Title>
+        <Typography.Text type="secondary">
           {meta.major} · {meta.degreeName} · 数据整理于 {meta.updated}
-        </p>
+        </Typography.Text>
       </header>
 
-      <section className="stat-grid">
+      <Row gutter={[14, 14]}>
         {stats.map((s) => (
-          <div className="stat-card" key={s.label}>
-            <div className="stat-value">
-              {s.value}
-              <small>{s.unit}</small>
-            </div>
-            <div className="stat-label">{s.label}</div>
-          </div>
+          <Col key={s.label} xs={12} sm={8} md={Math.floor(24 / stats.length)}>
+            <Card size="small">
+              <Statistic title={s.label} value={s.value} suffix={s.suffix} />
+            </Card>
+          </Col>
         ))}
-      </section>
+      </Row>
 
-      <h3 className="section-title">🎯 南航学位申请硬指标</h3>
-      <section className="req-grid">
+      <Typography.Title level={4} className="section-title">
+        🎯 南航学位申请硬指标
+      </Typography.Title>
+      <Row gutter={[14, 14]}>
         {degree.requirements.map((r) => (
-          <div className="req-card" key={r.t}>
-            <span className={`tag tag-${r.tag === '硬指标' ? 'must' : r.tag === '替代' ? 'alt' : 'time'}`}>
-              {r.tag}
-            </span>
-            <h4>{r.t}</h4>
-            <p>{r.d}</p>
-          </div>
+          <Col key={r.t} xs={24} sm={12} lg={8}>
+            <Card size="small" title={r.t}>
+              <Tag
+                color={r.tag === '硬指标' ? 'red' : r.tag === '替代' ? 'orange' : 'blue'}
+                style={{ marginBottom: 8 }}
+              >
+                {r.tag}
+              </Tag>
+              <br />
+              <Typography.Text type="secondary">{r.d}</Typography.Text>
+            </Card>
+          </Col>
         ))}
-      </section>
+      </Row>
 
-      <h3 className="section-title">🧭 免考决策速览（想拿学位怎么免）</h3>
-      <section className="conclusion-grid">
+      <Typography.Title level={4} className="section-title">
+        🧭 免考决策速览（想拿学位怎么免）
+      </Typography.Title>
+      <Row gutter={[14, 14]}>
         {conclusions.map((c) => (
-          <div className={`card conclusion ${c.tone}`} key={c.title}>
-            <h4>{c.title}</h4>
-            <ul>
-              {c.items.map((i) => (
-                <li key={i}>{i}</li>
-              ))}
-            </ul>
-          </div>
+          <Col key={c.title} xs={24} lg={8}>
+            <Card size="small" title={c.title}>
+              <List
+                size="small"
+                dataSource={c.items}
+                renderItem={(i) => (
+                  <List.Item style={{ padding: '6px 0' }}>
+                    <Typography.Text style={{ fontSize: 13 }}>{i}</Typography.Text>
+                  </List.Item>
+                )}
+              />
+            </Card>
+          </Col>
         ))}
-      </section>
+      </Row>
 
-      <h3 className="section-title">⏰ 关键时间</h3>
-      <section className="card">
-        <ul className="plain-list">
-          {reminders.map((r) => (
-            <li key={r.t}>
-              <b>
-                {r.icon} {r.t}
-              </b>
-              ：{r.d}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <Typography.Title level={4} className="section-title">
+        ⏰ 关键时间
+      </Typography.Title>
+      <Alert
+        type="warning"
+        showIcon
+        description={
+          <List
+            size="small"
+            dataSource={[
+              {
+                t: '2026 下半年免考窗口',
+                d: '9 月前后（通告已于 8 月底发布）—— 立即核对是否截止；错过则等 2027 上半年（预计 3 月初）',
+              },
+              { t: '免考时限', d: '必须在申请毕业前至少半年办完' },
+              { t: '学位申请时限', d: '取得毕业证书后一年内提交' },
+            ]}
+            renderItem={(i) => (
+              <List.Item>
+                <b>{i.t}</b>：{i.d}
+              </List.Item>
+            )}
+          />
+        }
+      />
     </div>
   );
 }

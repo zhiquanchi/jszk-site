@@ -1,29 +1,8 @@
 import { useMemo, useState } from 'react';
+import { Input, Segmented, Space, Table, Typography } from 'antd';
+import { CourseCell, ExemptionDetail, GroupTag, StatusTag } from '../components.jsx';
 
-const GROUPS = ['全部', '公共课', '专业基础课', '专业课', '实践课', '选考/替代', '毕业环节', '⭐ 学位课'];
-
-export const STATUS = {
-  'exempt-ok': { label: '✅ 可免', cls: 'chip ok' },
-  'exempt-caution': { label: '⚠️ 慎免', cls: 'chip caution' },
-  'never-exempt': { label: '⛔ 勿免', cls: 'chip never' },
-};
-
-export function StatusChip({ status }) {
-  const s = STATUS[status] || { label: status, cls: 'chip' };
-  return <span className={s.cls}>{s.label}</span>;
-}
-
-export function GroupBadge({ group }) {
-  const cls = {
-    公共课: 'g-public',
-    专业基础课: 'g-basic',
-    专业课: 'g-major',
-    实践课: 'g-practice',
-    '选考/替代': 'g-elective',
-    毕业环节: 'g-thesis',
-  }[group] || 'g-public';
-  return <span className={`badge ${cls}`}>{group}</span>;
-}
+const FILTERS = ['全部', '公共课', '专业基础课', '专业课', '实践课', '选考/替代', '毕业环节', '⭐ 学位课'];
 
 export default function Plan({ courses }) {
   const [group, setGroup] = useState('全部');
@@ -40,74 +19,72 @@ export default function Plan({ courses }) {
     [courses, group, q]
   );
 
+  const columns = [
+    {
+      title: '代码',
+      dataIndex: 'code',
+      width: 90,
+      render: (c) => <Typography.Text code>{c}</Typography.Text>,
+    },
+    {
+      title: '课程名称',
+      dataIndex: 'name',
+      render: (v, r) => (
+        <Space size={6} wrap>
+          <span>{v}</span>
+          <CourseCell course={{ ...r, name: '' }} />
+        </Space>
+      ),
+    },
+    { title: '学分', dataIndex: 'credits', width: 70 },
+    { title: '类型', dataIndex: 'group', width: 110, render: (g) => <GroupTag group={g} /> },
+    {
+      title: '免考结论',
+      dataIndex: 'status',
+      width: 130,
+      render: (s) => <StatusTag status={s} />,
+    },
+    { title: '说明', dataIndex: 'note', ellipsis: true },
+    {
+      title: '免考策略',
+      width: 90,
+      render: () => <Typography.Text type="secondary">展开行 ⇲</Typography.Text>,
+    },
+  ];
+
   return (
     <div>
       <header className="page-head">
-        <h2>考试计划</h2>
-        <p className="page-desc">
-          共 {courses.length} 门 · 图例：
-          <span className="chip ok">✅ 可免</span>
-          <span className="chip caution">⚠️ 慎免</span>
-          <span className="chip never">⛔ 勿免/不可免</span>
-          <span className="badge g-degree">★ 学位课</span>
-          <span className="badge g-stack">★ 全栈相关</span>
-        </p>
+        <Typography.Title level={3} style={{ margin: 0 }}>
+          考试计划
+        </Typography.Title>
+        <Typography.Text type="secondary">
+          共 {courses.length} 门 · 点击行首箭头展开每门课的免考策略明细（条件 / 材料 / 学位影响）
+        </Typography.Text>
       </header>
 
-      <div className="toolbar">
-        <div className="filter-chips">
-          {GROUPS.map((g) => (
-            <button
-              key={g}
-              className={`fchip ${group === g ? 'active' : ''}`}
-              onClick={() => setGroup(g)}
-            >
-              {g}
-            </button>
-          ))}
-        </div>
-        <input
-          className="search"
+      <Space direction="vertical" size={12} style={{ width: '100%', margin: '14px 0' }}>
+        <Segmented options={FILTERS} value={group} onChange={setGroup} />
+        <Input.Search
           placeholder="搜索课程名 / 代码…"
+          allowClear
           value={q}
           onChange={(e) => setQ(e.target.value)}
+          style={{ maxWidth: 320 }}
         />
-      </div>
+      </Space>
 
-      <div className="card table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>代码</th>
-              <th>课程名称</th>
-              <th>学分</th>
-              <th>类型</th>
-              <th>免考结论</th>
-              <th>说明</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((c) => (
-              <tr key={c.code} className={c.degree ? 'row-degree' : ''}>
-                <td className="mono">{c.code}</td>
-                <td>
-                  {c.degree && <span className="badge g-degree">★</span>} {c.name}
-                  {c.stack && <span className="badge g-stack">全栈</span>}
-                </td>
-                <td>{c.credits}</td>
-                <td>
-                  <GroupBadge group={c.group} />
-                </td>
-                <td>
-                  <StatusChip status={c.status} />
-                </td>
-                <td className="note-cell">{c.note}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {list.length === 0 && <div className="empty">没有匹配的课程</div>}
-      </div>
+      <Table
+        rowKey="code"
+        size="middle"
+        pagination={false}
+        dataSource={list}
+        columns={columns}
+        expandable={{
+          expandedRowRender: (r) => <ExemptionDetail course={r} />,
+          rowExpandable: (r) => r.exemption != null,
+        }}
+      />
     </div>
   );
 }

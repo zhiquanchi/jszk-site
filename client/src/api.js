@@ -15,4 +15,12 @@ export const addScore = (record) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(record),
   });
+export const bulkAddScores = (items) =>
+  fetchJSON('/api/scores/bulk', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(items),
+  });
 export const deleteScore = (id) => fetchJSON(`/api/scores/${id}`, { method: 'DELETE' });
+export const parseScore = (formData) =>
+  fetchJSON('/api/scores/parse', { method: 'POST', body: formData });

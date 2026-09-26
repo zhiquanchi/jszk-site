@@ -1,47 +1,108 @@
 import { useState } from 'react';
-import { addScore, deleteScore } from '../api.js';
+import {
+  Alert,
+  App,
+  Button,
+  Card,
+  Checkbox,
+  Col,
+  Collapse,
+  DatePicker,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Popconfirm,
+  Row,
+  Select,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Typography,
+  Upload,
+} from 'antd';
+import { DeleteOutlined, InboxOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import { addScore, bulkAddScores, deleteScore, parseScore } from '../api.js';
 
 const DEGREE_CODES = ['13000', '13003', '13015', '13180'];
-const threeBestAvg = (scores) => {
-  const best = (code) =>
-    Math.max(
-      -1,
-      ...scores.filter((s) => s.code === code && s.category === '笔试').map((s) => s.score)
-    );
-  const eng = best('13000');
-  const bests = ['13003', '13015', '13180'].map(best);
-  const avg = bests.every((v) => v >= 0)
-    ? Math.round((bests.reduce((a, b) => a + b, 0) / 3) * 10) / 10
-    : null;
-  return { eng, avg };
-};
 
 export default function Scores({ courses, scores, onRefresh }) {
-  const [form, setForm] = useState({
-    code: '',
-    score: '',
-    category: '笔试',
-    date: new Date().toISOString().slice(0, 10),
-    note: '',
-  });
-  const [msg, setMsg] = useState('');
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
+  const [parsed, setParsed] = useState(null); // { fileName, text }
+  const [rows, setRows] = useState([]); // 解析候选（可编辑分数、勾选导入）
+  const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const courseName = (code) => courses.find((c) => c.code === code)?.name || code;
-  const { eng, avg } = threeBestAvg(scores);
+  const best = (code) =>
+    Math.max(-1, ...scores.filter((s) => s.code === code && s.category === '笔试').map((s) => s.score));
+  const eng = best('13000');
+  const bests = ['13003', '13015', '13180'].map(best);
+  const avg =
+    bests.every((v) => v >= 0)
+      ? Math.round((bests.reduce((a, b) => a + b, 0) / 3) * 10) / 10
+      : null;
 
-  const submit = async (e) => {
-    e.preventDefault();
-    const score = Number(form.score);
-    if (!form.code) return setMsg('请选择课程');
-    if (!form.score || Number.isNaN(score) || score < 0 || score > 100)
-      return setMsg('请输入 0–100 的分数');
-    setMsg('');
+  // ---- 上传解析 ----
+  const customRequest = async ({ file, onSuccess, onError }) => {
+    setUploading(true);
     try {
-      await addScore({ ...form, score: Math.round(score) });
-      setForm((f) => ({ ...f, score: '', note: '' }));
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await parseScore(fd);
+      setRows((res.candidates || []).map((c) => ({ ...c, include: true })));
+      setParsed(res);
+      onSuccess(res);
+    } catch (e) {
+      message.error(e.message || '解析失败');
+      onError(e);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const confirmImport = async () => {
+    const items = rows
+      .filter((r) => r.include)
+      .map((r) => ({
+        code: r.code,
+        score: r.score,
+        category: '笔试',
+        note: `成绩单导入：${parsed?.fileName || ''}`,
+      }));
+    if (!items.length) return message.warning('请先勾选要导入的成绩');
+    setSubmitting(true);
+    try {
+      const res = await bulkAddScores(items);
+      message.success(`已导入 ${res.added} 条成绩`);
+      setParsed(null);
+      setRows([]);
       onRefresh();
-    } catch (err) {
-      setMsg(`提交失败：${err.message}`);
+    } catch (e) {
+      message.error(e.message || '导入失败');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ---- 手动录入 ----
+  const submitManual = async (values) => {
+    try {
+      await addScore({
+        code: values.code,
+        score: values.score,
+        category: values.category,
+        date: values.date?.format('YYYY-MM-DD'),
+        note: values.note,
+      });
+      message.success('已保存');
+      form.setFieldsValue({ score: undefined, note: undefined });
+      onRefresh();
+    } catch (e) {
+      message.error(e.message || '保存失败');
     }
   };
 
@@ -50,128 +111,270 @@ export default function Scores({ courses, scores, onRefresh }) {
     onRefresh();
   };
 
-  const degCard = (title, value, pass) => ({
-    title,
-    value,
-    pass,
-  });
   const degreeCards = [
-    degCard('英语 13000', eng >= 0 ? `${eng} 分` : '未录入', eng >= 70),
-    degCard('三门学位课均分', avg !== null ? `${avg} 分` : '未录齐', avg !== null && avg >= 70),
+    { title: '英语 13000（单科 ≥ 70）', value: eng >= 0 ? `${eng} 分` : '未录入', pass: eng >= 0 ? eng >= 70 : null },
+    {
+      title: '三门学位课均分（≥ 70）',
+      value: avg !== null ? `${avg} 分` : '未录齐',
+      pass: avg !== null ? avg >= 70 : null,
+    },
   ];
 
   return (
     <div>
       <header className="page-head">
-        <h2>成绩记录</h2>
-        <p className="page-desc">已录 {scores.length} 条 · 数据保存在服务端 data/scores.json</p>
+        <Typography.Title level={3} style={{ margin: 0 }}>
+          成绩记录
+        </Typography.Title>
+        <Typography.Text type="secondary">
+          已录 {scores.length} 条 · 持久化在服务端 data/scores.json
+        </Typography.Text>
       </header>
 
-      <h3 className="section-title">🎯 学位课程进度</h3>
-      <section className="stat-grid two">
+      <Row gutter={[14, 14]}>
         {degreeCards.map((c) => (
-          <div className={`stat-card ${c.pass === true ? 'pass' : c.pass === false ? 'fail' : ''}`} key={c.title}>
-            <div className="stat-value">
-              {c.value}
-              {c.pass !== null && <small>{c.pass ? ' ✓ 达标' : ' 未达标'}</small>}
-            </div>
-            <div className="stat-label">{c.title}</div>
-          </div>
+          <Col key={c.title} xs={24} md={12}>
+            <Card size="small">
+              <Statistic
+                title={c.title}
+                value={c.value}
+                suffix={
+                  c.pass === true ? (
+                    <Tag color="green">✓ 达标</Tag>
+                  ) : c.pass === false ? (
+                    <Tag color="orange">未达标</Tag>
+                  ) : null
+                }
+              />
+            </Card>
+          </Col>
         ))}
-      </section>
+      </Row>
 
-      <h3 className="section-title">➕ 录入成绩</h3>
-      <form className="card form-grid" onSubmit={submit}>
-        <label>
-          课程
-          <select value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })}>
-            <option value="">— 选择课程 —</option>
-            {courses.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.code} {c.name}
-                {c.degree ? ' ★' : ''}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          分数
-          <input
-            type="number"
-            min="0"
-            max="100"
-            value={form.score}
-            onChange={(e) => setForm({ ...form, score: e.target.value })}
-            placeholder="0–100"
-          />
-        </label>
-        <label>
-          类型
-          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-            <option>笔试</option>
-            <option>实践</option>
-            <option>论文</option>
-          </select>
-        </label>
-        <label>
-          日期
-          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-        </label>
-        <label className="span2">
-          备注
-          <input
-            type="text"
-            value={form.note}
-            onChange={(e) => setForm({ ...form, note: e.target.value })}
-            placeholder="如：2026 年 4 月考期 / 主考院校实践考核"
-          />
-        </label>
-        <button className="btn" type="submit">
-          保存
-        </button>
-        {msg && <div className="form-msg span2">{msg}</div>}
-      </form>
+      <Typography.Title level={4} className="section-title">
+        📤 上传成绩单自动解析
+      </Typography.Title>
+      <Card size="small">
+        <Upload.Dragger
+          accept="image/*,application/pdf"
+          maxCount={1}
+          showUploadList={false}
+          customRequest={customRequest}
+          disabled={uploading}
+        >
+          <p className="ant-upload-drag-icon">
+            <InboxOutlined />
+          </p>
+          <p className="ant-upload-text">
+            {uploading ? '解析中…（图片 OCR 首次约需数秒到十几秒）' : '点击或拖拽成绩单截图 / PDF 到此处'}
+          </p>
+          <p className="ant-upload-hint">
+            自动识别「课程代码 + 分数」，解析结果确认后再导入；旧课程代码会自动归一为现行代码
+          </p>
+        </Upload.Dragger>
+      </Card>
 
-      <h3 className="section-title">📒 成绩列表</h3>
-      <div className="card table-wrap">
-        {scores.length === 0 ? (
-          <div className="empty">还没有成绩记录，考完一门就上来记一笔吧</div>
+      <Typography.Title level={4} className="section-title">
+        ➕ 手动录入
+      </Typography.Title>
+      <Card size="small">
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={submitManual}
+          initialValues={{ category: '笔试', date: dayjs() }}
+        >
+          <Row gutter={12}>
+            <Col xs={24} md={10}>
+              <Form.Item
+                name="code"
+                label="课程"
+                rules={[{ required: true, message: '请选择课程' }]}
+              >
+                <Select
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="选择课程（支持搜索）"
+                  options={courses.map((c) => ({
+                    value: c.code,
+                    label: `${c.code} ${c.name}${c.degree ? ' ★学位课' : ''}`,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={12} md={4}>
+              <Form.Item
+                name="score"
+                label="分数"
+                rules={[{ required: true, message: '必填' }]}
+              >
+                <InputNumber min={0} max={100} style={{ width: '100%' }} placeholder="0–100" />
+              </Form.Item>
+            </Col>
+            <Col xs={12} md={4}>
+              <Form.Item name="category" label="类型">
+                <Select
+                  options={[
+                    { value: '笔试', label: '笔试' },
+                    { value: '实践', label: '实践' },
+                    { value: '论文', label: '论文' },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={12} md={6}>
+              <Form.Item name="date" label="日期">
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24}>
+              <Form.Item name="note" label="备注">
+                <Input placeholder="如：2026 年 4 月考期 / 主考院校实践考核" />
+              </Form.Item>
+            </Col>
+            <Col>
+              <Form.Item label=" ">
+                <Button type="primary" htmlType="submit">
+                  保存
+                </Button>
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Card>
+
+      <Typography.Title level={4} className="section-title">
+        💮 成绩列表
+      </Typography.Title>
+      <Table
+        rowKey="id"
+        size="middle"
+        pagination={{ pageSize: 10, hideOnSinglePage: true }}
+        locale={{ emptyText: '还没有成绩记录，考完一门就上来记一笔吧' }}
+        dataSource={[...scores].reverse()}
+        columns={[
+          {
+            title: '日期',
+            dataIndex: 'date',
+            width: 110,
+            render: (d) => <Typography.Text code>{d}</Typography.Text>,
+          },
+          {
+            title: '课程',
+            render: (_, r) => (
+              <Space size={6} wrap>
+                <Typography.Text code>{r.code}</Typography.Text>
+                <span>{courseName(r.code)}</span>
+                {DEGREE_CODES.includes(r.code) && <Tag color="magenta">★</Tag>}
+                {r.originalCode && <Tag color="default">原 {r.originalCode}</Tag>}
+              </Space>
+            ),
+          },
+          { title: '类型', dataIndex: 'category', width: 80 },
+          {
+            title: '分数',
+            dataIndex: 'score',
+            width: 90,
+            render: (v) => (
+              <Tag color={v >= 70 ? 'green' : 'orange'} style={{ fontSize: 13 }}>
+                {v}
+              </Tag>
+            ),
+          },
+          { title: '备注', dataIndex: 'note', ellipsis: true },
+          {
+            title: '',
+            width: 80,
+            render: (_, r) => (
+              <Popconfirm title="删除这条成绩？" onConfirm={() => remove(r.id)}>
+                <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+              </Popconfirm>
+            ),
+          },
+        ]}
+      />
+
+      <Modal
+        open={!!parsed}
+        title={`解析结果：${parsed?.fileName || ''}`}
+        width={760}
+        onCancel={() => setParsed(null)}
+        onOk={confirmImport}
+        okText={`导入所选（${rows.filter((r) => r.include).length}）`}
+        confirmLoading={submitting}
+        okButtonProps={{ disabled: !rows.some((r) => r.include) }}
+      >
+        {rows.length ? (
+          <Table
+            rowKey="code"
+            size="small"
+            pagination={false}
+            dataSource={rows}
+            columns={[
+              {
+                title: '',
+                width: 40,
+                render: (_, r, idx) => (
+                  <Checkbox
+                    checked={r.include}
+                    onChange={(e) =>
+                      setRows((rs) => rs.map((x, i) => (i === idx ? { ...x, include: e.target.checked } : x)))
+                    }
+                  />
+                ),
+              },
+              {
+                title: '课程',
+                render: (_, r) => (
+                  <Space size={6} wrap>
+                    <Typography.Text code>{r.code}</Typography.Text>
+                    <span>{r.name}</span>
+                    {DEGREE_CODES.includes(r.code) && <Tag color="magenta">★</Tag>}
+                    {r.originalCode && <Tag>原 {r.originalCode}</Tag>}
+                  </Space>
+                ),
+              },
+              {
+                title: '分数',
+                width: 130,
+                render: (_, r, idx) => (
+                  <InputNumber
+                    min={0}
+                    max={100}
+                    value={r.score}
+                    onChange={(v) =>
+                      setRows((rs) => rs.map((x, i) => (i === idx ? { ...x, score: v } : x)))
+                    }
+                  />
+                ),
+              },
+            ]}
+          />
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>日期</th>
-                <th>课程</th>
-                <th>类型</th>
-                <th>分数</th>
-                <th>备注</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...scores].reverse().map((s) => (
-                <tr key={s.id}>
-                  <td className="mono">{s.date}</td>
-                  <td>
-                    <span className="mono">{s.code}</span> {courseName(s.code)}
-                    {DEGREE_CODES.includes(s.code) && <span className="badge g-degree">★</span>}
-                  </td>
-                  <td>{s.category}</td>
-                  <td>
-                    <b className={s.score >= 70 ? 'score-pass' : 'score-low'}>{s.score}</b>
-                  </td>
-                  <td className="note-cell">{s.note}</td>
-                  <td>
-                    <button className="btn-link" onClick={() => remove(s.id)}>
-                      删除
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Alert
+            type="warning"
+            showIcon
+            message="没有解析出成绩"
+            description="可在下方原始文本里核对识别效果；识别不到的部分请用「手动录入」补齐。"
+          />
         )}
-      </div>
+        {parsed?.text && (
+          <Collapse
+            style={{ marginTop: 12 }}
+            items={[
+              {
+                key: 'raw',
+                label: '原始识别文本',
+                children: (
+                  <pre style={{ maxHeight: 220, overflow: 'auto', fontSize: 12, whiteSpace: 'pre-wrap' }}>
+                    {parsed.text}
+                  </pre>
+                ),
+              },
+            ]}
+          />
+        )}
+      </Modal>
     </div>
   );
 }

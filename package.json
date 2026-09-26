@@ -1,18 +1,21 @@
 {
   "name": "jszk-cs-site",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "江苏自考·计算机科学与技术 个人学习资料站（React + Vite + Express）",
+  "description": "江苏自考·计算机科学与技术 个人学习资料站（React + Vite + Express + antd）",
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "node server/index.js",
     "dev:client": "npm --prefix client run dev",
     "build": "npm --prefix client run build",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "fetch:tessdata": "node scripts/fetch-tessdata.mjs"
   },
   "dependencies": {
     "concurrently": "^9.1.0",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "multer": "^2.0.0",
+    "tesseract.js": "^6.0.0"
   }
 }

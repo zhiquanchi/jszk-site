@@ -1,3 +1,5 @@
 node_modules/
+client/dist/
+tessdata/
 *.log
 .DS_Store

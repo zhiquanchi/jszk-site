@@ -1,24 +1,440 @@
 [
-  { "code": "15040", "name": "习近平新时代中国特色社会主义思想概论", "credits": 3, "group": "公共课", "practice": false, "degree": false, "status": "exempt-ok", "note": "学历免考：原学历修过名称相同或相当的思政课且成绩合格" },
-  { "code": "15043", "name": "中国近现代史纲要", "credits": 3, "group": "公共课", "practice": false, "degree": false, "status": "exempt-ok", "note": "学历免考：同上，政治理论课对学位无影响" },
-  { "code": "15044", "name": "马克思主义基本原理", "credits": 3, "group": "公共课", "practice": false, "degree": false, "status": "exempt-ok", "note": "学历免考：同上，政治理论课对学位无影响" },
-  { "code": "13000", "name": "英语（专升本）", "credits": 7, "group": "公共课", "practice": false, "degree": true, "status": "exempt-caution", "note": "学位课 · 单科须实考 ≥ 70。PETS-3 免考后无成绩＝学位断线；唯一例外是有效期内 CET-4/6 替代学位英语（先向南航确认）" },
-  { "code": "00023", "name": "高等数学（工本）", "credits": 10, "group": "公共课", "practice": false, "degree": false, "status": "exempt-ok", "note": "非学位课；数学类专科以上毕业可免，免考不影响学位" },
-  { "code": "02324", "name": "离散数学", "credits": 4, "group": "专业基础课", "practice": false, "degree": false, "status": "exempt-ok", "note": "非学位课；原学历同名课程成绩合格可免" },
-  { "code": "13013", "name": "高级语言程序设计", "credits": 4, "group": "专业课", "practice": false, "degree": false, "status": "exempt-ok", "note": "非学位课；学历同名课程可免（配套实践 13014 不可免）" },
-  { "code": "13014", "name": "高级语言程序设计（实践）", "credits": 2, "group": "实践课", "practice": true, "degree": false, "status": "never-exempt", "note": "实践课不可免考，须参加主考院校考核" },
-  { "code": "13003", "name": "数据结构与算法", "credits": 4, "group": "专业课", "practice": false, "degree": true, "status": "never-exempt", "note": "学位课程：免考即无成绩。与 13015、13180 三门平均 ≥ 70" },
-  { "code": "13004", "name": "数据结构与算法（实践）", "credits": 2, "group": "实践课", "practice": true, "degree": false, "status": "never-exempt", "note": "实践课不可免考" },
-  { "code": "13015", "name": "计算机系统原理", "credits": 4, "group": "专业课", "practice": false, "degree": true, "status": "never-exempt", "note": "学位课程，必须实考" },
-  { "code": "13180", "name": "操作系统", "credits": 4, "group": "专业课", "practice": false, "degree": true, "status": "never-exempt", "note": "学位课程，必须实考" },
-  { "code": "02333", "name": "软件工程", "credits": 3, "group": "专业课", "practice": false, "degree": false, "status": "exempt-ok", "note": "非学位课；学历同名课程可免" },
-  { "code": "02334", "name": "软件工程（实践）", "credits": 1, "group": "实践课", "practice": true, "degree": false, "status": "never-exempt", "note": "实践课不可免考" },
-  { "code": "00898", "name": "互联网软件应用与开发", "credits": 3, "group": "专业课", "practice": false, "degree": false, "stack": true, "status": "exempt-ok", "note": "非学位课；学历同名课程可免" },
-  { "code": "00899", "name": "互联网软件应用与开发（实践）", "credits": 3, "group": "实践课", "practice": true, "degree": false, "stack": true, "status": "never-exempt", "note": "实践课不可免考" },
-  { "code": "04735", "name": "数据库系统原理", "credits": 4, "group": "专业课", "practice": false, "degree": false, "stack": true, "status": "exempt-ok", "note": "非学位课；学历同名课程可免" },
-  { "code": "04736", "name": "数据库系统原理（实践）", "credits": 2, "group": "实践课", "practice": true, "degree": false, "stack": true, "status": "never-exempt", "note": "实践课不可免考" },
-  { "code": "04747", "name": "Java 语言程序设计（一）", "credits": 3, "group": "选考/替代", "practice": false, "degree": false, "stack": true, "status": "exempt-ok", "note": "非学位课；学历同名课程可免" },
-  { "code": "04748", "name": "Java 语言程序设计（一）（实践）", "credits": 1, "group": "实践课", "practice": true, "degree": false, "stack": true, "status": "never-exempt", "note": "实践课不可免考" },
-  { "code": "13017", "name": "计算机网络与信息安全", "credits": 6, "group": "专业课", "practice": false, "degree": false, "stack": true, "status": "exempt-ok", "note": "非学位课；学历同名课程可免" },
-  { "code": "14976", "name": "计算机科学与技术（本科）毕业设计", "credits": 0, "group": "毕业环节", "practice": false, "degree": false, "stack": true, "status": "never-exempt", "note": "不可免；成绩良好以上才达学位线，可用全栈项目作选题" }
+  {
+    "code": "15040",
+    "name": "习近平新时代中国特色社会主义思想概论",
+    "credits": 3,
+    "group": "公共课",
+    "practice": false,
+    "degree": false,
+    "status": "exempt-ok",
+    "note": "学历免考即可，实考可省",
+    "formerCodes": ["12656"],
+    "exemption": {
+      "summary": "建议直接走学历免考，不用实考。",
+      "paths": [
+        {
+          "type": "学历免考",
+          "condition": "国家承认学历专科以上毕业，原学历修过名称相同或要求相当的思政课（如毛泽东思想和中国特色社会主义理论体系概论 12656）且成绩合格",
+          "materials": "加盖教务处/档案章的学籍卡或成绩单 + 毕业证原件",
+          "degreeImpact": "无影响（非学位课程）"
+        }
+      ],
+      "risk": null
+    }
+  },
+  {
+    "code": "15043",
+    "name": "中国近现代史纲要",
+    "credits": 3,
+    "group": "公共课",
+    "practice": false,
+    "degree": false,
+    "status": "exempt-ok",
+    "note": "学历免考即可，实考可省",
+    "formerCodes": ["03708"],
+    "exemption": {
+      "summary": "建议直接走学历免考，不用实考。",
+      "paths": [
+        {
+          "type": "学历免考",
+          "condition": "国家承认学历专科以上毕业，原学历修过名称相同或要求相当的思政课（中国近现代史纲要 03708 与本课同名）且成绩合格",
+          "materials": "加盖教务处/档案章的学籍卡或成绩单 + 毕业证原件",
+          "degreeImpact": "无影响（非学位课程）"
+        }
+      ],
+      "risk": null
+    }
+  },
+  {
+    "code": "15044",
+    "name": "马克思主义基本原理",
+    "credits": 3,
+    "group": "公共课",
+    "practice": false,
+    "degree": false,
+    "status": "exempt-ok",
+    "note": "学历免考即可，实考可省",
+    "formerCodes": ["03709"],
+    "exemption": {
+      "summary": "建议直接走学历免考，不用实考。",
+      "paths": [
+        {
+          "type": "学历免考",
+          "condition": "国家承认学历专科以上毕业，原学历修过名称相同或要求相当的思政课（马克思主义基本原理概论 03709）且成绩合格",
+          "materials": "加盖教务处/档案章的学籍卡或成绩单 + 毕业证原件",
+          "degreeImpact": "无影响（非学位课程）"
+        }
+      ],
+      "risk": null
+    }
+  },
+  {
+    "code": "13000",
+    "name": "英语（专升本）",
+    "credits": 7,
+    "group": "公共课",
+    "practice": false,
+    "degree": true,
+    "status": "exempt-caution",
+    "note": "学位课 · 实考目标 ≥ 70，免考是学位高风险操作",
+    "formerCodes": ["00015"],
+    "exemption": {
+      "summary": "要学位就实考 ≥ 70 分；任何免考路径都必须先过「学位英语」这一关。",
+      "paths": [
+        {
+          "type": "证书免考",
+          "condition": "PETS 三级及以上笔试合格",
+          "materials": "PETS 证书原件",
+          "degreeImpact": "⛔ 严重风险：免考无成绩，学位英语 70 分要求无法满足——拿学位别走这条"
+        },
+        {
+          "type": "证书免考",
+          "condition": "CET-4/6 合格，且发证日期在头尾六年内",
+          "materials": "CET 证书原件",
+          "degreeImpact": "⚡ 可组合：南航学位规定认可有效期内 CET 替代学位英语；「免考 + 证书」组合须先电话南航自考办确认"
+        },
+        {
+          "type": "学历免考",
+          "condition": "英语类专业专科以上毕业，原学历修过相当英语课程且成绩合格",
+          "materials": "盖章成绩单 + 毕业证原件",
+          "degreeImpact": "⛔ 同样无成绩，学位英语要求无法满足"
+        }
+      ],
+      "risk": "免考后成绩单只记「免考」、没有分数，无法充当 70 分的学位英语成绩；唯一安全组合是有效期内的 CET-4/6，且必须先经南航自考办确认。"
+    }
+  },
+  {
+    "code": "00023",
+    "name": "高等数学（工本）",
+    "credits": 10,
+    "group": "公共课",
+    "practice": false,
+    "degree": false,
+    "status": "exempt-ok",
+    "note": "数学类专业毕业可免；非数学类需实考（过线即可，不计学位均分）",
+    "exemption": {
+      "summary": "数学类专业毕业可免；否则实考——它是 10 学分大户，但只要过线，不影响学位。",
+      "paths": [
+        {
+          "type": "学历免考",
+          "condition": "数学类专业专科以上毕业，原学历修过高等数学且成绩合格",
+          "materials": "盖章成绩单（体现课程名与成绩）+ 毕业证原件",
+          "degreeImpact": "无影响（非学位课程）"
+        }
+      ],
+      "risk": null
+    }
+  },
+  {
+    "code": "02324",
+    "name": "离散数学",
+    "credits": 4,
+    "group": "专业基础课",
+    "practice": false,
+    "degree": false,
+    "status": "exempt-ok",
+    "note": "原学历学过同名课程即可免，不影响学位",
+    "exemption": {
+      "summary": "原学历学过同名/相当课程即可免，不影响学位。",
+      "paths": [
+        {
+          "type": "学历免考",
+          "condition": "原学历（专科以上）修过名称相同或要求相当的课程且成绩合格",
+          "materials": "加盖教务处/档案章的学籍卡或成绩单 + 毕业证原件",
+          "degreeImpact": "无影响（非学位课程）"
+        }
+      ],
+      "risk": null
+    }
+  },
+  {
+    "code": "13013",
+    "name": "高级语言程序设计",
+    "credits": 4,
+    "group": "专业课",
+    "practice": false,
+    "degree": false,
+    "status": "exempt-ok",
+    "note": "原学历学过同名课程可免；配套实践 13014 不可免",
+    "exemption": {
+      "summary": "原学历学过同名/相当课程即可免（配套实践课 13014 不可免）。",
+      "paths": [
+        {
+          "type": "学历免考",
+          "condition": "原学历（专科以上）修过名称相同或要求相当的课程（如 C 语言程序设计等编程基础课）且成绩合格",
+          "materials": "加盖教务处/档案章的学籍卡或成绩单 + 毕业证原件",
+          "degreeImpact": "无影响（非学位课程）"
+        }
+      ],
+      "risk": null
+    }
+  },
+  {
+    "code": "13014",
+    "name": "高级语言程序设计（实践）",
+    "credits": 2,
+    "group": "实践课",
+    "practice": true,
+    "degree": false,
+    "status": "never-exempt",
+    "note": "实践课不可免考，须参加主考院校考核",
+    "exemption": {
+      "summary": "不可免考：实践课由主考院校组织上机/实操考核，没有免考通道。",
+      "paths": [],
+      "risk": null
+    }
+  },
+  {
+    "code": "13003",
+    "name": "数据结构与算法",
+    "credits": 4,
+    "group": "专业课",
+    "practice": false,
+    "degree": true,
+    "status": "never-exempt",
+    "note": "★ 学位课：免考即无成绩，失去学位资格",
+    "exemption": {
+      "summary": "⛔ 学位课程，禁止免考。必须实考，与 13015、13180 三门平均 ≥ 70。",
+      "paths": [],
+      "risk": "任何类型的免考都会让成绩单上没有分数，学位课程均分要求（≥70）直接无法满足。"
+    }
+  },
+  {
+    "code": "13004",
+    "name": "数据结构与算法（实践）",
+    "credits": 2,
+    "group": "实践课",
+    "practice": true,
+    "degree": false,
+    "status": "never-exempt",
+    "note": "实践课不可免考，须参加主考院校考核",
+    "exemption": {
+      "summary": "不可免考：实践课由主考院校组织考核，没有免考通道。",
+      "paths": [],
+      "risk": null
+    }
+  },
+  {
+    "code": "13015",
+    "name": "计算机系统原理",
+    "credits": 4,
+    "group": "专业课",
+    "practice": false,
+    "degree": true,
+    "status": "never-exempt",
+    "note": "★ 学位课：免考即无成绩，失去学位资格",
+    "exemption": {
+      "summary": "⛔ 学位课程，禁止免考。必须实考，计入三门学位课均分。",
+      "paths": [],
+      "risk": "任何类型的免考都会让成绩单上没有分数，学位课程均分要求（≥70）直接无法满足。"
+    }
+  },
+  {
+    "code": "13180",
+    "name": "操作系统",
+    "credits": 4,
+    "group": "专业课",
+    "practice": false,
+    "degree": true,
+    "status": "never-exempt",
+    "note": "★ 学位课：免考即无成绩，失去学位资格",
+    "exemption": {
+      "summary": "⛔ 学位课程，禁止免考。必须实考，计入三门学位课均分。",
+      "paths": [],
+      "risk": "任何类型的免考都会让成绩单上没有分数，学位课程均分要求（≥70）直接无法满足。"
+    }
+  },
+  {
+    "code": "02333",
+    "name": "软件工程",
+    "credits": 3,
+    "group": "专业课",
+    "practice": false,
+    "degree": false,
+    "status": "exempt-ok",
+    "note": "原学历学过同名课程可免，不影响学位",
+    "exemption": {
+      "summary": "原学历学过同名/相当课程即可免（配套实践课 02334 不可免）。",
+      "paths": [
+        {
+          "type": "学历免考",
+          "condition": "原学历（专科以上）修过名称相同或要求相当的课程且成绩合格",
+          "materials": "加盖教务处/档案章的学籍卡或成绩单 + 毕业证原件",
+          "degreeImpact": "无影响（非学位课程）"
+        }
+      ],
+      "risk": null
+    }
+  },
+  {
+    "code": "02334",
+    "name": "软件工程（实践）",
+    "credits": 1,
+    "group": "实践课",
+    "practice": true,
+    "degree": false,
+    "status": "never-exempt",
+    "note": "实践课不可免考，须参加主考院校考核",
+    "exemption": {
+      "summary": "不可免考：实践课由主考院校组织考核，没有免考通道。",
+      "paths": [],
+      "risk": null
+    }
+  },
+  {
+    "code": "00898",
+    "name": "互联网软件应用与开发",
+    "credits": 3,
+    "group": "专业课",
+    "practice": false,
+    "degree": false,
+    "stack": true,
+    "status": "exempt-ok",
+    "note": "原学历学过同名课程可免，不影响学位",
+    "exemption": {
+      "summary": "原学历学过同名/相当课程（如 Web 开发类课程）即可免（配套实践 00899 不可免）。",
+      "paths": [
+        {
+          "type": "学历免考",
+          "condition": "原学历（专科以上）修过名称相同或要求相当的课程且成绩合格",
+          "materials": "加盖教务处/档案章的学籍卡或成绩单 + 毕业证原件",
+          "degreeImpact": "无影响（非学位课程）"
+        }
+      ],
+      "risk": null
+    }
+  },
+  {
+    "code": "00899",
+    "name": "互联网软件应用与开发（实践）",
+    "credits": 3,
+    "group": "实践课",
+    "practice": true,
+    "degree": false,
+    "stack": true,
+    "status": "never-exempt",
+    "note": "实践课不可免考，须参加主考院校考核",
+    "exemption": {
+      "summary": "不可免考：实践课由主考院校组织考核，没有免考通道。",
+      "paths": [],
+      "risk": null
+    }
+  },
+  {
+    "code": "04735",
+    "name": "数据库系统原理",
+    "credits": 4,
+    "group": "专业课",
+    "practice": false,
+    "degree": false,
+    "stack": true,
+    "status": "exempt-ok",
+    "note": "原学历学过同名课程可免，不影响学位",
+    "exemption": {
+      "summary": "原学历学过同名/相当课程即可免（配套实践 04736 不可免）。",
+      "paths": [
+        {
+          "type": "学历免考",
+          "condition": "原学历（专科以上）修过名称相同或要求相当的数据库课程且成绩合格",
+          "materials": "加盖教务处/档案章的学籍卡或成绩单 + 毕业证原件",
+          "degreeImpact": "无影响（非学位课程）"
+        }
+      ],
+      "risk": null
+    }
+  },
+  {
+    "code": "04736",
+    "name": "数据库系统原理（实践）",
+    "credits": 2,
+    "group": "实践课",
+    "practice": true,
+    "degree": false,
+    "stack": true,
+    "status": "never-exempt",
+    "note": "实践课不可免考，须参加主考院校考核",
+    "exemption": {
+      "summary": "不可免考：实践课由主考院校组织考核，没有免考通道。",
+      "paths": [],
+      "risk": null
+    }
+  },
+  {
+    "code": "04747",
+    "name": "Java 语言程序设计（一）",
+    "credits": 3,
+    "group": "选考/替代",
+    "practice": false,
+    "degree": false,
+    "stack": true,
+    "status": "exempt-ok",
+    "note": "原学历学过同名课程可免，不影响学位",
+    "exemption": {
+      "summary": "原学历学过同名/相当课程即可免（配套实践 04748 不可免）。",
+      "paths": [
+        {
+          "type": "学历免考",
+          "condition": "原学历（专科以上）修过名称相同或要求相当的 Java/面向对象课程且成绩合格",
+          "materials": "加盖教务处/档案章的学籍卡或成绩单 + 毕业证原件",
+          "degreeImpact": "无影响（非学位课程）"
+        }
+      ],
+      "risk": null
+    }
+  },
+  {
+    "code": "04748",
+    "name": "Java 语言程序设计（一）（实践）",
+    "credits": 1,
+    "group": "实践课",
+    "practice": true,
+    "degree": false,
+    "stack": true,
+    "status": "never-exempt",
+    "note": "实践课不可免考，须参加主考院校考核",
+    "exemption": {
+      "summary": "不可免考：实践课由主考院校组织考核，没有免考通道。",
+      "paths": [],
+      "risk": null
+    }
+  },
+  {
+    "code": "13017",
+    "name": "计算机网络与信息安全",
+    "credits": 6,
+    "group": "专业课",
+    "practice": false,
+    "degree": false,
+    "stack": true,
+    "status": "exempt-ok",
+    "note": "原学历学过同名课程可免，不影响学位",
+    "exemption": {
+      "summary": "原学历学过同名/相当网络课程即可免。",
+      "paths": [
+        {
+          "type": "学历免考",
+          "condition": "原学历（专科以上）修过名称相同或要求相当的网络类课程且成绩合格",
+          "materials": "加盖教务处/档案章的学籍卡或成绩单 + 毕业证原件",
+          "degreeImpact": "无影响（非学位课程）"
+        }
+      ],
+      "risk": null
+    }
+  },
+  {
+    "code": "14976",
+    "name": "计算机科学与技术（本科）毕业设计",
+    "credits": 0,
+    "group": "毕业环节",
+    "practice": false,
+    "degree": false,
+    "stack": true,
+    "status": "never-exempt",
+    "note": "不可免；须答辩且成绩良好以上才达学位线",
+    "exemption": {
+      "summary": "不可免考：毕业环节必须完成选题、撰写与答辩，成绩良好以上。",
+      "paths": [],
+      "risk": null
+    }
+  }
 ]
