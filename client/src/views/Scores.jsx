@@ -166,10 +166,10 @@ export default function Scores({ courses, scores, onRefresh }) {
             <InboxOutlined />
           </p>
           <p className="ant-upload-text">
-            {uploading ? '解析中…（图片 OCR 首次约需数秒到十几秒）' : '点击或拖拽成绩单截图 / PDF 到此处'}
+            {uploading ? '解析中…' : '成绩单解析（大模型通道）'}
           </p>
           <p className="ant-upload-hint">
-            自动识别「课程代码 + 分数」，解析结果确认后再导入；旧课程代码会自动归一为现行代码
+            上传截图 / PDF 自动识别「课程代码 + 分数」，确认后批量导入；通道接入前请先用下方手动录入
           </p>
         </Upload.Dragger>
       </Card>

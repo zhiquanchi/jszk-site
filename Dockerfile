@@ -23,11 +23,6 @@ COPY server/ ./server/
 COPY data/ ./data/
 COPY --from=client-build /app/client/dist ./client/dist
 
-# OCR 语言包（构建期下载，运行期离线可用）
-RUN mkdir -p tessdata && \
-    wget -q https://tessdata.projectnaptha.com/4.0.0/chi_sim.traineddata.gz -O tessdata/chi_sim.traineddata.gz && \
-    wget -q https://tessdata.projectnaptha.com/4.0.0/eng.traineddata.gz -O tessdata/eng.traineddata.gz
-
 # 成绩数据持久化：挂载卷
 VOLUME ["/app/data"]
 EXPOSE 3001

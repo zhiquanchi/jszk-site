@@ -2,14 +2,13 @@
 
 专升本 X2080901 · 主考院校：南京航空航天大学 · 目标：工学学士学位
 
-技术栈：React 18 + Vite 7 + antd 5（前端）/ Express（后端）/ JSON 文件持久化 / tesseract.js 图片 OCR
+技术栈：React 18 + Vite 7 + antd 5（前端）/ Express（后端）/ JSON 文件持久化
 
 ## 本地开发
 
 ```bash
 npm install                # 后端依赖
 npm install --prefix client  # 前端依赖
-npm run fetch:tessdata     # OCR 语言包（成绩单图片识别用，一次性）
 npm run dev                # 同时启动 Express(3001) 与 Vite(5173)
 ```
 
@@ -47,7 +46,6 @@ web/
 │   ├── degree.json       南航学位要求、红线、行动清单
 │   ├── codeChanges.json  课程代码变更映射（2024 版计划调整）
 │   └── scores.json       成绩记录（运行时生成，已挂卷持久化）
-└── scripts/         OCR 语言包下载脚本
 ```
 
 ## API
@@ -59,7 +57,7 @@ web/
 | POST | `/api/scores` | 新增成绩（旧课程代码自动归一为现行代码） |
 | POST | `/api/scores/bulk` | 批量导入（成绩单解析确认后） |
 | DELETE | `/api/scores/:id` | 删除成绩 |
-| POST | `/api/scores/parse` | 上传成绩单（multipart 字段 `file`），图片走本地 OCR；**PDF 解析预留大模型通道**——替换 `server/index.js` 中 `extractText` 的 PDF 分支即可接入 |
+| POST | `/api/scores/parse` | 上传成绩单（multipart 字段 `file`）。本地解析已移除，**统一预留大模型通道**——替换 `server/index.js` 的 `parseFile` 实现即可，接口形状不变 |
 
 ## 课程代码变更追踪
 

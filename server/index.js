@@ -3,13 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import multer from 'multer';
-import { createWorker } from 'tesseract.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(ROOT, 'data');
 const SCORES_FILE = path.join(DATA_DIR, 'scores.json');
-const TESSDATA_DIR = process.env.TESSDATA_DIR || path.join(ROOT, 'tessdata');
 const CLIENT_DIST = path.join(ROOT, 'client', 'dist');
 const PORT = process.env.PORT || 3001;
 
@@ -96,43 +94,21 @@ app.delete('/api/scores/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// ---- 成绩单解析：PDF 直接抽文本，图片走 OCR ----
+// ---- 成绩单解析 ----
+// 本地 OCR 已移除：解析统一预留为大模型通道。
+// 接入时替换 parseFile 的实现（调大模型 API 识别成绩），返回 { text, candidates } 即可，
+// /api/scores/parse 接口形状不变（multipart 字段 file）。
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-let ocrWorkerPromise = null;
-async function getOcrWorker() {
-  if (!fs.existsSync(path.join(TESSDATA_DIR, 'chi_sim.traineddata.gz'))) {
-    throw Object.assign(
-      new Error('OCR 语言包未就绪：请在 web 目录执行 npm run fetch:tessdata 后重试'),
-      { status: 400 }
-    );
-  }
-  if (!ocrWorkerPromise) {
-    ocrWorkerPromise = createWorker('chi_sim+eng', 1, {
-      langPath: TESSDATA_DIR,
-      gzip: true,
-    });
-  }
-  return ocrWorkerPromise;
-}
-
-async function extractText(file) {
-  const isPdf =
-    file.mimetype === 'application/pdf' || /\.pdf$/i.test(file.originalname || '');
-  if (isPdf) {
-    // PDF 本地解析未启用：计划改走大模型解析通道，先提示用户转图片或手动录入
-    throw Object.assign(
-      new Error('PDF 解析即将切换为大模型通道，请先截图为图片上传，或使用手动录入'),
-      { status: 400 }
-    );
-  }
-  const worker = await getOcrWorker();
-  const { data } = await worker.recognize(file.buffer);
-  return data.text;
+async function parseFile(file) {
+  throw Object.assign(
+    new Error('成绩单解析将接入大模型通道，接入前请使用「手动录入」'),
+    { status: 400 }
+  );
 }
 
 // 从文本中抽取「课程代码 + 分数」候选
@@ -169,8 +145,8 @@ function parseCandidates(text) {
 app.post('/api/scores/parse', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: '未收到文件' });
   try {
-    const text = await extractText(req.file);
-    res.json({ fileName: req.file.originalname, text, candidates: parseCandidates(text) });
+    const { text, candidates } = await parseFile(req.file);
+    res.json({ fileName: req.file.originalname, text, candidates });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message || '解析失败' });
   }
