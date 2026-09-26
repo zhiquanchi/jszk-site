@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, Card, Descriptions, List, Segmented, Table, Tabs, Tag, Typography } from 'antd';
+import { Alert, Card, Descriptions, List, Segmented, Space, Table, Tabs, Tag, Typography } from 'antd';
 import { ExemptionDetail, StatusTag } from '../components.jsx';
 
 const EFFECT_TAG = {
