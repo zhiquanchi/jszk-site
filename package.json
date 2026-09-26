@@ -1,0 +1,18 @@
+{
+  "name": "jszk-cs-site",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "江苏自考·计算机科学与技术 个人学习资料站（React + Vite + Express）",
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "node server/index.js",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "concurrently": "^9.1.0",
+    "express": "^4.19.2"
+  }
+}
