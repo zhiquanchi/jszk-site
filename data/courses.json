@@ -232,7 +232,7 @@
     "practice": true,
     "degree": false,
     "status": "never-exempt",
-    "note": "实践课不可免考，须参加主考院校考核",
+    "note": "不在证书免考对照表（附件3）内，须参加主考院校实做考核",
     "exemption": {
       "summary": "不可免考：实践课由主考院校组织考核，没有免考通道。",
       "paths": [],
@@ -299,7 +299,7 @@
     "practice": true,
     "degree": false,
     "status": "never-exempt",
-    "note": "实践课不可免考，须参加主考院校考核",
+    "note": "不在证书免考对照表（附件3）内，须参加主考院校实做考核",
     "exemption": {
       "summary": "不可免考：实践课由主考院校组织考核，没有免考通道。",
       "paths": [],
@@ -338,7 +338,7 @@
     "degree": false,
     "stack": true,
     "status": "never-exempt",
-    "note": "实践课不可免考，须参加主考院校考核",
+    "note": "不在证书免考对照表（附件3）内，须参加主考院校实做考核",
     "exemption": {
       "summary": "不可免考：实践课由主考院校组织考核，没有免考通道。",
       "paths": [],
@@ -377,7 +377,7 @@
     "degree": false,
     "stack": true,
     "status": "never-exempt",
-    "note": "实践课不可免考，须参加主考院校考核",
+    "note": "不在证书免考对照表（附件3）内，须参加主考院校实做考核",
     "exemption": {
       "summary": "不可免考：实践课由主考院校组织考核，没有免考通道。",
       "paths": [],
