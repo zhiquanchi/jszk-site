@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert, Card, Descriptions, List, Segmented, Space, Table, Tabs, Tag, Typography } from 'antd';
-import { ExemptionDetail, StatusTag } from '../components.jsx';
+import { ExemptionDetail, PageHeader, StatusTag } from '../components.jsx';
 
 const EFFECT_TAG = {
   good: { label: '✅ 可免本专业课程', color: 'green' },
@@ -10,15 +10,15 @@ const EFFECT_TAG = {
   mid: { label: '• 视对应目录', color: 'green' },
 };
 
-const STATUS_FILTERS = [
-  { label: '全部', value: 'all' },
-  { label: '✅ 可免', value: 'exempt-ok' },
-  { label: '⚠️ 慎免', value: 'exempt-caution' },
-  { label: '⛔ 勿免/不可免', value: 'never-exempt' },
-];
-
 function PerCourseStrategy({ courses }) {
   const [filter, setFilter] = useState('all');
+  const countBy = (s) => courses.filter((c) => c.status === s).length;
+  const statusFilters = [
+    { label: `全部 ${courses.length}`, value: 'all' },
+    { label: `✅ 可免 ${countBy('exempt-ok')}`, value: 'exempt-ok' },
+    { label: `⚠️ 慎免 ${countBy('exempt-caution')}`, value: 'exempt-caution' },
+    { label: `⛔ 勿免/不可免 ${countBy('never-exempt')}`, value: 'never-exempt' },
+  ];
   const list = useMemo(
     () => courses.filter((c) => filter === 'all' || c.status === filter),
     [courses, filter]
@@ -63,7 +63,7 @@ function PerCourseStrategy({ courses }) {
 
   return (
     <>
-      <Segmented options={STATUS_FILTERS} value={filter} onChange={setFilter} style={{ marginBottom: 14 }} />
+      <Segmented options={statusFilters} value={filter} onChange={setFilter} style={{ marginBottom: 14 }} />
       <Table
         rowKey="code"
         size="middle"
@@ -116,14 +116,10 @@ function CertPolicy({ policies }) {
 export default function Exemption({ courses, policies }) {
   return (
     <div>
-      <header className="page-head">
-        <Typography.Title level={3} style={{ margin: 0 }}>
-          免考中心
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          每门课怎么免、要什么条件、对学位有什么影响 —— 以及全省统一的政策与办理窗口
-        </Typography.Text>
-      </header>
+      <PageHeader
+        title="免考中心"
+        desc="每门课怎么免、要什么条件、对学位有什么影响 —— 以及全省统一的政策与办理窗口"
+      />
 
       <Tabs
         defaultActiveKey="per-course"

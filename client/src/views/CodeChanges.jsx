@@ -1,17 +1,14 @@
 import { Alert, Space, Table, Tag, Typography } from 'antd';
 import { ArrowRightOutlined } from '@ant-design/icons';
+import { PageHeader } from '../components.jsx';
 
 export default function CodeChanges({ codeChanges }) {
   return (
     <div>
-      <header className="page-head">
-        <Typography.Title level={3} style={{ margin: 0 }}>
-          代码变更追踪
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          2024 版考试计划调整了部分课程代码，这里集中维护新旧映射
-        </Typography.Text>
-      </header>
+      <PageHeader
+        title="代码变更追踪"
+        desc="2024 版考试计划调整了部分课程代码，这里集中维护新旧映射"
+      />
 
       <Alert
         type="info"

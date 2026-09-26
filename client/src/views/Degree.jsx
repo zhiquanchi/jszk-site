@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Card, Checkbox, Col, List, Progress, Row, Table, Tag, Typography } from 'antd';
+import { PageHeader } from '../components.jsx';
 
 const STORE_KEY = 'jszk-degree-actions-v1';
 
@@ -20,14 +21,10 @@ export default function Degree({ degree }) {
 
   return (
     <div>
-      <header className="page-head">
-        <Typography.Title level={3} style={{ margin: 0 }}>
-          学位攻略
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          主考院校：{degree.school} · 目标：工学学士学位
-        </Typography.Text>
-      </header>
+      <PageHeader
+        title="学位攻略"
+        desc={`主考院校：${degree.school} · 目标：工学学士学位`}
+      />
 
       <Typography.Title level={4} className="section-title">
         📏 申请条件
@@ -104,7 +101,11 @@ export default function Degree({ degree }) {
         </Tag>
       </Typography.Title>
       <Card size="small">
-        <Progress percent={Math.round((doneCount / degree.actions.length) * 100)} size="small" />
+        <Progress
+          percent={Math.round((doneCount / degree.actions.length) * 100)}
+          size="small"
+          strokeColor={doneCount === degree.actions.length ? '#52c41a' : '#1677ff'}
+        />
         <List
           dataSource={degree.actions}
           renderItem={(a, i) => (

@@ -1,12 +1,19 @@
 import { useMemo, useState } from 'react';
 import { Input, Segmented, Space, Table, Typography } from 'antd';
-import { CourseCell, ExemptionDetail, GroupTag, StatusTag } from '../components.jsx';
+import { CourseCell, ExemptionDetail, GroupTag, PageHeader, StatusTag } from '../components.jsx';
 
-const FILTERS = ['全部', '公共课', '专业基础课', '专业课', '实践课', '选考/替代', '毕业环节', '⭐ 学位课'];
+const GROUPS = ['全部', '公共课', '专业基础课', '专业课', '实践课', '选考/替代', '毕业环节', '⭐ 学位课'];
 
 export default function Plan({ courses }) {
   const [group, setGroup] = useState('全部');
   const [q, setQ] = useState('');
+
+  // 筛选项带计数，先看到分布再筛选（识别而非回忆）
+  const counts = useMemo(() => {
+    const m = { 全部: courses.length, '⭐ 学位课': courses.filter((c) => c.degree).length };
+    for (const c of courses) m[c.group] = (m[c.group] || 0) + 1;
+    return m;
+  }, [courses]);
 
   const list = useMemo(
     () =>
@@ -45,26 +52,21 @@ export default function Plan({ courses }) {
       render: (s) => <StatusTag status={s} />,
     },
     { title: '说明', dataIndex: 'note', ellipsis: true },
-    {
-      title: '免考策略',
-      width: 90,
-      render: () => <Typography.Text type="secondary">展开行 ⇲</Typography.Text>,
-    },
   ];
 
   return (
     <div>
-      <header className="page-head">
-        <Typography.Title level={3} style={{ margin: 0 }}>
-          考试计划
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          共 {courses.length} 门 · 点击行首箭头展开每门课的免考策略明细（条件 / 材料 / 学位影响）
-        </Typography.Text>
-      </header>
+      <PageHeader
+        title="考试计划"
+        desc={`共 ${courses.length} 门 · 点击行首箭头展开每门课的免考策略明细（条件 / 材料 / 学位影响）`}
+      />
 
       <Space direction="vertical" size={12} style={{ width: '100%', margin: '14px 0' }}>
-        <Segmented options={FILTERS} value={group} onChange={setGroup} />
+        <Segmented
+          options={GROUPS.map((g) => ({ label: `${g} ${counts[g] ?? 0}`, value: g }))}
+          value={group}
+          onChange={setGroup}
+        />
         <Input.Search
           placeholder="搜索课程名 / 代码…"
           allowClear
@@ -80,6 +82,7 @@ export default function Plan({ courses }) {
         pagination={false}
         dataSource={list}
         columns={columns}
+        rowClassName={(r) => (r.degree ? 'row-degree' : '')}
         expandable={{
           expandedRowRender: (r) => <ExemptionDetail course={r} />,
           rowExpandable: (r) => r.exemption != null,

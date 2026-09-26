@@ -2,50 +2,14 @@ body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', 'Segoe UI', sans-serif;
-  background: #f5f6fa;
+  background: #f0f2f5;
 }
 
 #root {
   min-height: 100vh;
 }
 
-/* 侧栏品牌区 */
-.brand {
-  padding: 20px 16px 12px;
-}
-
-.brand-badge {
-  display: inline-block;
-  background: #4f46e5;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  padding: 2px 10px;
-  border-radius: 999px;
-}
-
-.brand h1 {
-  font-size: 17px;
-  line-height: 1.4;
-  margin: 10px 0 6px;
-}
-
-.brand-sub {
-  color: #8a90a0;
-  font-size: 12px;
-  margin: 0;
-}
-
-.sidebar-foot {
-  position: absolute;
-  bottom: 16px;
-  left: 0;
-  right: 0;
-  padding: 0 16px;
-  color: #a0a4b3;
-  font-size: 11.5px;
-}
+/* ---------- 深色侧边栏（经典后台范式） ---------- */
 
 .sider {
   position: sticky;
@@ -54,33 +18,192 @@ body {
   overflow: auto;
 }
 
-/* 主区 */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  min-height: 62px;
+}
+
+.brand-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1677ff, #722ed1);
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.brand-title {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.brand-sub {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.ant-layout-sider-collapsed .brand-text {
+  display: none;
+}
+
+.sider-foot {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  right: 0;
+  padding: 0 16px;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.ant-layout-sider-collapsed .sider-foot {
+  display: none;
+}
+
+/* ---------- 主区 ---------- */
+
 .main {
-  padding: 26px 32px 60px;
-  max-width: 1120px;
+  padding: 24px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
 }
 
 .section-title {
-  margin: 26px 0 12px !important;
+  margin: 28px 0 12px !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.foot {
+  text-align: center;
+  background: transparent;
+  color: #8c8c8c;
+  font-size: 12px;
+  padding: 16px;
 }
 
 .page-msg {
   padding: 80px 40px;
   text-align: center;
-  color: #8a90a0;
+  color: #8c8c8c;
   font-size: 15px;
 }
 
+/* ---------- 统计卡（图标 + 数值，经典 KPI 卡样式） ---------- */
+
+.stat-card .ant-card-body {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 16px;
+}
+
+.stat-ico {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.stat-meta {
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.stat-value small {
+  font-size: 11px;
+  font-weight: 400;
+  color: #8c8c8c;
+  margin-left: 4px;
+}
+
+.stat-label {
+  color: #8c8c8c;
+  font-size: 12.5px;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- 卡片交互反馈 ---------- */
+
+.ant-card {
+  transition: box-shadow 0.2s;
+}
+
+.ant-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* ---------- 学位课行高亮 ---------- */
+
+tr.row-degree > td {
+  background: #fffafc;
+}
+
+/* ---------- 决策卡 ---------- */
+
+.decision-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.decision-head .anticon {
+  font-size: 20px;
+}
+
+.decision-head h4 {
+  margin: 0;
+  font-size: 14.5px;
+  flex: 1;
+}
+
+/* ---------- 响应式 ---------- */
+
 @media (max-width: 768px) {
   .main {
-    padding: 18px 14px 50px;
+    padding: 16px 12px;
   }
 
-  .sidebar-foot {
-    display: none;
+  .page-head {
+    margin-bottom: 12px;
   }
 }

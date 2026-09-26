@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, App, Button, Card, Table, Tag, Typography } from 'antd';
 import { runNcreCheck } from '../api.js';
+import { PageHeader } from '../components.jsx';
 
 const STATUS_COLOR = {
   报名中: 'green',
@@ -34,14 +35,10 @@ export default function Ncre({ ncre, onRefresh }) {
 
   return (
     <div>
-      <header className="page-head">
-        <Typography.Title level={3} style={{ margin: 0 }}>
-          NCRE 报名追踪
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          上海市 · 全国计算机等级考试 · 每日 9:00 自动查询更新（最近更新：{ncre.updatedAt || '—'}）
-        </Typography.Text>
-      </header>
+      <PageHeader
+        title="NCRE 报名追踪"
+        desc={`上海市 · 全国计算机等级考试 · 每日 9:00 自动查询更新（最近更新：${ncre.updatedAt || '—'}）`}
+      />
 
       <Alert
         type="info"

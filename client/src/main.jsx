@@ -11,7 +11,7 @@ dayjs.locale('zh-cn');
 createRoot(document.getElementById('root')).render(
   <ConfigProvider
     locale={zhCN}
-    theme={{ token: { colorPrimary: '#4f46e5', borderRadius: 8 } }}
+    theme={{ token: { colorPrimary: '#1677ff', borderRadius: 8 } }}
   >
     <AntApp>
       <App />

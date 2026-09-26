@@ -8,6 +8,7 @@ import {
   Col,
   Collapse,
   DatePicker,
+  Empty,
   Form,
   Input,
   InputNumber,
@@ -25,6 +26,7 @@ import {
 import { DeleteOutlined, InboxOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { addScore, bulkAddScores, deleteScore, parseScore } from '../api.js';
+import { PageHeader } from '../components.jsx';
 
 const DEGREE_CODES = ['13000', '13003', '13015', '13180'];
 
@@ -122,14 +124,10 @@ export default function Scores({ courses, scores, onRefresh }) {
 
   return (
     <div>
-      <header className="page-head">
-        <Typography.Title level={3} style={{ margin: 0 }}>
-          成绩记录
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          已录 {scores.length} 条 · 持久化在服务端 data/scores.json
-        </Typography.Text>
-      </header>
+      <PageHeader
+        title="成绩记录"
+        desc={`已录 ${scores.length} 条 · 持久化在服务端，可上传成绩单自动识别`}
+      />
 
       <Row gutter={[14, 14]}>
         {degreeCards.map((c) => (
@@ -250,7 +248,9 @@ export default function Scores({ courses, scores, onRefresh }) {
         rowKey="id"
         size="middle"
         pagination={{ pageSize: 10, hideOnSinglePage: true }}
-        locale={{ emptyText: '还没有成绩记录，考完一门就上来记一笔吧' }}
+        locale={{
+          emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有成绩记录，考完一门就上来记一笔吧" />,
+        }}
         dataSource={[...scores].reverse()}
         columns={[
           {

@@ -1,5 +1,24 @@
 import { Alert, Descriptions, Space, Tag, Typography } from 'antd';
 
+// 统一页面头：所有视图共用，保证标题层级与间距一致
+export function PageHeader({ title, desc, extra }) {
+  return (
+    <header className="page-head">
+      <div>
+        <Typography.Title level={3} style={{ margin: 0 }}>
+          {title}
+        </Typography.Title>
+        {desc && (
+          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+            {desc}
+          </Typography.Text>
+        )}
+      </div>
+      {extra}
+    </header>
+  );
+}
+
 export const STATUS_META = {
   'exempt-ok': { label: '✅ 可免考', color: 'green' },
   'exempt-caution': { label: '⚠️ 慎免考', color: 'orange' },
