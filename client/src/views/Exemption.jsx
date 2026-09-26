@@ -3,6 +3,7 @@ import { Alert, Card, Descriptions, List, Segmented, Table, Tabs, Tag, Typograph
 import { ExemptionDetail, StatusTag } from '../components.jsx';
 
 const EFFECT_TAG = {
+  good: { label: '✅ 可免本专业课程', color: 'green' },
   bad: { label: '⛔ 学位风险', color: 'red' },
   special: { label: '⚡ 特殊路径', color: 'orange' },
   none: { label: '➖ 与本专业无关', color: 'default' },

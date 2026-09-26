@@ -154,16 +154,23 @@
     "group": "专业课",
     "practice": false,
     "degree": false,
+    "formerCodes": ["00342"],
     "status": "exempt-ok",
-    "note": "原学历学过同名课程可免；配套实践 13014 不可免",
+    "note": "学历免考或 NCRE 二级C 免考；不影响学位",
     "exemption": {
-      "summary": "原学历学过同名/相当课程即可免（配套实践课 13014 不可免）。",
+      "summary": "两条免考通道：原学历同名课程，或 NCRE 二级C 证书（细则附件3明确对应新计划代码，理论+实践一起免）。",
       "paths": [
         {
           "type": "学历免考",
           "condition": "原学历（专科以上）修过名称相同或要求相当的课程（如 C 语言程序设计等编程基础课）且成绩合格",
           "materials": "加盖教务处/档案章的学籍卡或成绩单 + 毕业证原件",
           "degreeImpact": "无影响（非学位课程）"
+        },
+        {
+          "type": "证书免考",
+          "condition": "全国计算机等级考试（NCRE）二级 C语言程序设计 笔试+上机合格证书",
+          "materials": "NCRE 合格证书原件（江苏考点成绩可联网自动核验；外省证书需现场确认）",
+          "degreeImpact": "无影响（非学位课程）；与 13014 实践课一并免"
         }
       ],
       "risk": null
@@ -176,12 +183,20 @@
     "group": "实践课",
     "practice": true,
     "degree": false,
-    "status": "never-exempt",
-    "note": "实践课不可免考，须参加主考院校考核",
+    "formerCodes": ["00343"],
+    "status": "exempt-caution",
+    "note": "实践课常规不可免；唯一例外：持 NCRE 二级C 可随 13013 一并免",
     "exemption": {
-      "summary": "不可免考：实践课由主考院校组织上机/实操考核，没有免考通道。",
-      "paths": [],
-      "risk": null
+      "summary": "实践课常规规则不可免考；唯一例外是 NCRE 二级C 证书——细则明确理论（13013）与实践（13014）一并免考。",
+      "paths": [
+        {
+          "type": "证书免考",
+          "condition": "全国计算机等级考试（NCRE）二级 C语言程序设计 笔试+上机合格证书（与 13013 同批办理）",
+          "materials": "NCRE 合格证书原件（江苏考点可联网核验）",
+          "degreeImpact": "无影响（非学位课程）"
+        }
+      ],
+      "risk": "没有 NCRE 二级C 证书就走不了免考，仍需参加主考院校实践考核。"
     }
   },
   {
@@ -368,15 +383,21 @@
     "degree": false,
     "stack": true,
     "status": "exempt-ok",
-    "note": "原学历学过同名课程可免，不影响学位",
+    "note": "学历免考或 NCRE 二级Java 免考；不影响学位",
     "exemption": {
-      "summary": "原学历学过同名/相当课程即可免（配套实践 04748 不可免）。",
+      "summary": "两条免考通道：原学历同名课程，或 NCRE 二级Java 证书（理论+实践一起免）。",
       "paths": [
         {
           "type": "学历免考",
           "condition": "原学历（专科以上）修过名称相同或要求相当的 Java/面向对象课程且成绩合格",
           "materials": "加盖教务处/档案章的学籍卡或成绩单 + 毕业证原件",
           "degreeImpact": "无影响（非学位课程）"
+        },
+        {
+          "type": "证书免考",
+          "condition": "全国计算机等级考试（NCRE）二级 Java语言程序设计 笔试+上机合格证书",
+          "materials": "NCRE 合格证书原件（江苏考点可联网核验）",
+          "degreeImpact": "无影响（非学位课程）；与 04748 实践课一并免"
         }
       ],
       "risk": null
@@ -390,12 +411,19 @@
     "practice": true,
     "degree": false,
     "stack": true,
-    "status": "never-exempt",
-    "note": "实践课不可免考，须参加主考院校考核",
+    "status": "exempt-caution",
+    "note": "实践课常规不可免；唯一例外：持 NCRE 二级Java 可随 04747 一并免",
     "exemption": {
-      "summary": "不可免考：实践课由主考院校组织考核，没有免考通道。",
-      "paths": [],
-      "risk": null
+      "summary": "实践课常规规则不可免考；唯一例外是 NCRE 二级Java 证书——细则明确理论（04747）与实践（04748）一并免考。",
+      "paths": [
+        {
+          "type": "证书免考",
+          "condition": "全国计算机等级考试（NCRE）二级 Java语言程序设计 笔试+上机合格证书（与 04747 同批办理）",
+          "materials": "NCRE 合格证书原件（江苏考点可联网核验）",
+          "degreeImpact": "无影响（非学位课程）"
+        }
+      ],
+      "risk": "没有 NCRE 二级Java 证书就走不了免考，仍需参加主考院校实践考核。"
     }
   },
   {
