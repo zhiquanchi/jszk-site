@@ -7,14 +7,16 @@ import {
   TrophyOutlined,
   FormOutlined,
   SwapOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons';
-import { getData, getScores } from './api.js';
+import { getData, getScores, getNcre } from './api.js';
 import Overview from './views/Overview.jsx';
 import Plan from './views/Plan.jsx';
 import Exemption from './views/Exemption.jsx';
 import Degree from './views/Degree.jsx';
 import Scores from './views/Scores.jsx';
 import CodeChanges from './views/CodeChanges.jsx';
+import Ncre from './views/Ncre.jsx';
 
 const NAV = [
   { key: 'overview', icon: <AppstoreOutlined />, label: '总览' },
@@ -22,6 +24,7 @@ const NAV = [
   { key: 'exemption', icon: <FileDoneOutlined />, label: '免考中心' },
   { key: 'degree', icon: <TrophyOutlined />, label: '学位攻略' },
   { key: 'scores', icon: <FormOutlined />, label: '成绩记录' },
+  { key: 'ncre', icon: <CalendarOutlined />, label: 'NCRE 报名' },
   { key: 'codechanges', icon: <SwapOutlined />, label: '代码变更' },
 ];
 
@@ -32,6 +35,7 @@ export default function App() {
   const [view, setView] = useState(currentView);
   const [data, setData] = useState(null);
   const [scores, setScores] = useState([]);
+  const [ncre, setNcre] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -41,10 +45,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    Promise.all([getData(), getScores()])
-      .then(([d, s]) => {
+    Promise.all([getData(), getScores(), getNcre()])
+      .then(([d, s, n]) => {
         setData(d);
         setScores(s);
+        setNcre(n);
       })
       .catch((e) => setError(String(e.message || e)));
   }, []);
@@ -99,6 +104,7 @@ export default function App() {
         {view === 'exemption' && <Exemption courses={courses} policies={policies} />}
         {view === 'degree' && <Degree degree={degree} />}
         {view === 'scores' && <Scores courses={courses} scores={scores} onRefresh={refreshScores} />}
+        {view === 'ncre' && ncre && <Ncre ncre={ncre} />}
         {view === 'codechanges' && <CodeChanges codeChanges={codeChanges} />}
       </Layout.Content>
     </Layout>

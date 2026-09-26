@@ -13,7 +13,10 @@ function resolveRoot() {
 
 const ROOT = process.env.APP_ROOT || resolveRoot();
 const DATA_DIR = path.join(ROOT, 'data');
-const SCORES_FILE = path.join(DATA_DIR, 'scores.json');
+// 可变数据（成绩、通知、定时任务更新的 NCRE 信息）与静态数据分离：
+// 容器里 STORE_DIR 单独挂卷，静态数据随镜像更新，不会卡在旧卷里
+const STORE_DIR = process.env.STORE_DIR || DATA_DIR;
+const SCORES_FILE = path.join(STORE_DIR, 'scores.json');
 const CLIENT_DIST = path.join(ROOT, 'client', 'dist');
 const PORT = process.env.PORT || 3001;
 
@@ -98,6 +101,61 @@ app.post('/api/scores/bulk', (req, res) => {
 app.delete('/api/scores/:id', (req, res) => {
   writeScores(readScores().filter((s) => s.id !== req.params.id));
   res.json({ ok: true });
+});
+
+// ---- NCRE 报名信息（每日定时任务经 POST /api/ncre 更新）----
+
+const readNcre = () => {
+  const storeFile = path.join(STORE_DIR, 'ncre.json');
+  if (fs.existsSync(storeFile)) return JSON.parse(fs.readFileSync(storeFile, 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'ncre.json'), 'utf8'));
+};
+
+app.get('/api/ncre', (req, res) => {
+  res.json({ ...readNcre(), notifications: readNotifications() });
+});
+
+app.post('/api/ncre', (req, res) => {
+  const { source, note, sessions } = req.body ?? {};
+  if (!Array.isArray(sessions) || sessions.length === 0) {
+    return res.status(400).json({ error: 'body 需含非空 sessions 数组' });
+  }
+  const data = {
+    updatedAt: new Date().toISOString().slice(0, 10),
+    source: source || '上海市教育考试院（上海招考热线 shmeea.edu.cn）',
+    note: note || '',
+    sessions,
+  };
+  fs.mkdirSync(STORE_DIR, { recursive: true });
+  fs.writeFileSync(path.join(STORE_DIR, 'ncre.json'), JSON.stringify(data, null, 2));
+  res.json(data);
+});
+
+// ---- 通知接口（预留）：接收通知仅落盘 + 控制台日志；
+// 后续接入邮件 / webhook 等渠道时在此分发 ----
+
+const readNotifications = () => {
+  const f = path.join(STORE_DIR, 'notifications.json');
+  return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : [];
+};
+
+app.post('/api/notify', (req, res) => {
+  const { event, title, message } = req.body ?? {};
+  if (!event || !title) return res.status(400).json({ error: 'event 与 title 为必填' });
+  const record = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    event,
+    title,
+    message: message || '',
+    delivered: 'logged',
+    time: new Date().toISOString(),
+  };
+  const list = readNotifications();
+  list.push(record);
+  fs.mkdirSync(STORE_DIR, { recursive: true });
+  fs.writeFileSync(path.join(STORE_DIR, 'notifications.json'), JSON.stringify(list, null, 2));
+  console.log(`[通知] ${event}: ${title} ${message}`);
+  res.status(201).json(record);
 });
 
 // ---- 成绩单解析 ----

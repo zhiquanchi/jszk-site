@@ -18,14 +18,14 @@ RUN mkdir -p /target && bun build --compile --minify server/index.js --outfile /
 FROM alpine:3.20
 RUN apk add --no-cache libstdc++ libgcc
 WORKDIR /app
-ENV NODE_ENV=production PORT=3001
+ENV NODE_ENV=production PORT=3001 STORE_DIR=/app/store
 
 COPY --from=server-build /target/jszk-server ./jszk-server
 COPY data/ ./data/
 COPY --from=client-build /app/client/dist ./client/dist
 
-# 成绩数据持久化：挂载卷
-VOLUME ["/app/data"]
+# 可变数据（成绩/通知/NCRE 更新）持久化：独立挂载卷，静态数据随镜像走
+VOLUME ["/app/store"]
 EXPOSE 3001
 
 CMD ["/app/jszk-server"]

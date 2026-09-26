@@ -1,0 +1,23 @@
+{
+  "updatedAt": "2026-09-26",
+  "source": "上海市教育考试院（上海招考热线 shmeea.edu.cn）",
+  "note": "每天 9:00 由定时任务自动查询更新；关注科目：NCRE 二级 C语言程序设计（→免 13013/13014）、二级 Java（→免 04747/04748）",
+  "sessions": [
+    {
+      "session": "第78次（2026年9月）",
+      "regStart": "2026-08-31",
+      "regEnd": "",
+      "examDate": "2026-09-19",
+      "status": "已结束",
+      "sourceUrl": "https://www.shmeea.edu.cn"
+    },
+    {
+      "session": "第79次（2027年3月）",
+      "regStart": "",
+      "regEnd": "",
+      "examDate": "",
+      "status": "未发布",
+      "sourceUrl": "https://www.shmeea.edu.cn"
+    }
+  ]
+}
