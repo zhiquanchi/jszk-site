@@ -10,6 +10,7 @@ async function fetchJSON(url, options) {
 export const getData = () => fetchJSON('/api/data');
 export const getScores = () => fetchJSON('/api/scores');
 export const getNcre = () => fetchJSON('/api/ncre');
+export const runNcreCheck = () => fetchJSON('/api/ncre/run', { method: 'POST' });
 export const addScore = (record) =>
   fetchJSON('/api/scores', {
     method: 'POST',

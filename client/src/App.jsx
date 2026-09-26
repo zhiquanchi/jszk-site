@@ -59,6 +59,11 @@ export default function App() {
       .then(setScores)
       .catch(() => message.error('刷新成绩失败'));
 
+  const refreshNcre = () =>
+    getNcre()
+      .then(setNcre)
+      .catch(() => {});
+
   if (error) return <div className="page-msg">加载失败：{error}（请确认 Express 后端已启动）</div>;
   if (!data) return <div className="page-msg">加载中…</div>;
 
@@ -104,7 +109,7 @@ export default function App() {
         {view === 'exemption' && <Exemption courses={courses} policies={policies} />}
         {view === 'degree' && <Degree degree={degree} />}
         {view === 'scores' && <Scores courses={courses} scores={scores} onRefresh={refreshScores} />}
-        {view === 'ncre' && ncre && <Ncre ncre={ncre} />}
+        {view === 'ncre' && ncre && <Ncre ncre={ncre} onRefresh={refreshNcre} />}
         {view === 'codechanges' && <CodeChanges codeChanges={codeChanges} />}
       </Layout.Content>
     </Layout>

@@ -61,12 +61,13 @@ web/
 | DELETE | `/api/scores/:id` | 删除成绩 |
 | POST | `/api/scores/parse` | 上传成绩单（multipart 字段 `file`）。本地解析已移除，**统一预留大模型通道**——替换 `server/index.js` 的 `parseFile` 实现即可，接口形状不变 |
 | GET | `/api/ncre` | 上海 NCRE 报名/考试时间追踪 + 通知记录 |
-| POST | `/api/ncre` | 更新 NCRE 数据（每日定时任务调用） |
+| POST | `/api/ncre` | 更新 NCRE 批次数据（sessions） |
+| POST | `/api/ncre/run` | 手动触发一次 NCRE 公告抓取检查 |
 | POST | `/api/notify` | 通知接口（预留）：`{event, title, message}`，当前落盘+日志，后续在此接入邮件/webhook 等渠道 |
 
-## NCRE 报名追踪（每日定时任务）
+## NCRE 报名追踪（服务内每日定时任务）
 
-站点「NCRE 报名」页展示上海市 NCRE（全国计算机等级考试）各批次报名/考试时间。每日 9:00 由 ZCode 定时任务（automation `每天9点查询上海NCRE报名考试时间`）自动：联网查询上海招考热线最新公告 → 有变化则更新 `data/ncre.json` 并 POST `/api/ncre` → 新批次公布 / 报名开放 / 时间变动时调用 `/api/notify`。关注科目：二级 C（免 13013/13014）、二级 Java（免 04747/04748）。
+站点「NCRE 报名」页展示上海市 NCRE（全国计算机等级考试）各批次报名/考试时间。定时任务**跑在应用内**（`server/ncreJob.js`，node-cron，默认每天 9:00 Asia/Shanghai，环境变量 `NCRE_CRON` 可改）：拉取 `data/ncreSources.json` 配置的来源页 → 抓取标题含「计算机等级考试」的公告链接 → 与上次快照对比 → 新公告写入「抓取到的相关公告」并触发 `/api/notify`。页面上可「立即检查」手动触发（`POST /api/ncre/run`）。批次报名/考试时间（`sessions`）仍由 `POST /api/ncre` 维护。关注科目：二级 C（免 13013/13014）、二级 Java（免 04747/04748）。
 
 ## 课程代码变更追踪
 

@@ -1,0 +1,8 @@
+{
+  "keyword": "计算机等级考试",
+  "note": "每日定时抓取这些页面，提取标题含关键词的公告链接；可自行增删来源",
+  "sources": [
+    { "name": "上海招考热线", "url": "https://www.shmeea.edu.cn" },
+    { "name": "中国教育考试网 NCRE", "url": "https://ncre.neea.edu.cn" }
+  ]
+}

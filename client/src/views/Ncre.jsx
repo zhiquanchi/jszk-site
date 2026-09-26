@@ -1,4 +1,6 @@
-import { Alert, Card, Table, Tag, Typography } from 'antd';
+import { useState } from 'react';
+import { Alert, App, Button, Card, Table, Tag, Typography } from 'antd';
+import { runNcreCheck } from '../api.js';
 
 const STATUS_COLOR = {
   报名中: 'green',
@@ -8,10 +10,27 @@ const STATUS_COLOR = {
   已结束: 'default',
 };
 
-export default function Ncre({ ncre }) {
+export default function Ncre({ ncre, onRefresh }) {
+  const { message } = App.useApp();
+  const [checking, setChecking] = useState(false);
   const sessions = ncre.sessions || [];
   const notifications = ncre.notifications || [];
+  const announcements = ncre.announcements || [];
+  const job = ncre.job || {};
   const next = sessions.find((s) => s.status === '报名中' || s.status === '未发布' || s.status === '即将报名');
+
+  const checkNow = async () => {
+    setChecking(true);
+    try {
+      const r = await runNcreCheck();
+      message.success(r.result);
+      onRefresh?.();
+    } catch (e) {
+      message.error(e.message || '检查失败');
+    } finally {
+      setChecking(false);
+    }
+  };
 
   return (
     <div>
@@ -85,6 +104,60 @@ export default function Ncre({ ncre }) {
         <Typography.Paragraph type="secondary" style={{ marginTop: 12 }}>
           {ncre.note}
         </Typography.Paragraph>
+      )}
+
+      <Typography.Title level={4} className="section-title">
+        🤖 每日公告监控（服务内 node-cron）
+      </Typography.Title>
+      <Card size="small" style={{ marginBottom: 16 }}>
+        <Typography.Paragraph style={{ marginBottom: 8 }}>
+          <Tag color={job.enabled ? 'green' : 'red'}>{job.enabled ? '运行中' : '未运行'}</Tag>
+          计划：<Typography.Text code>{job.cron}</Typography.Text>（{job.timezone}）
+          <Button size="small" style={{ marginLeft: 12 }} loading={checking} onClick={checkNow}>
+            立即检查
+          </Button>
+        </Typography.Paragraph>
+        <Typography.Text type="secondary">
+          上次检查：{job.lastRunAt || '—'} · 结果：{job.lastResult || '—'}
+        </Typography.Text>
+        <br />
+        <Typography.Text type="secondary">
+          每日自动拉取来源页抓取 NCRE 公告，新公告触发通知接口；来源配置在{' '}
+          <Typography.Text code>data/ncreSources.json</Typography.Text>
+        </Typography.Text>
+      </Card>
+
+      {announcements.length > 0 && (
+        <>
+          <Typography.Title level={4} className="section-title">
+            📰 抓取到的相关公告
+          </Typography.Title>
+          <Table
+            rowKey="url"
+            size="small"
+            pagination={{ pageSize: 5, hideOnSinglePage: true }}
+            style={{ marginBottom: 16 }}
+            dataSource={announcements}
+            columns={[
+              {
+                title: '标题',
+                dataIndex: 'title',
+                render: (t, r) => (
+                  <a href={r.url} target="_blank" rel="noreferrer">
+                    {t}
+                  </a>
+                ),
+              },
+              { title: '来源', dataIndex: 'source', width: 170 },
+              {
+                title: '发现时间',
+                dataIndex: 'foundAt',
+                width: 190,
+                render: (t) => <Typography.Text code>{t}</Typography.Text>,
+              },
+            ]}
+          />
+        </>
       )}
 
       <Typography.Title level={4} className="section-title">

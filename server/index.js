@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import multer from 'multer';
+import { startNcreJob, runNcreCheck, getJobMeta, readAnnouncements } from './ncreJob.js';
 
 // 根目录解析：Bun 单文件编译产物里 import.meta.url 指向虚拟文件系统（$bunfs），
 // 此时以可执行文件所在目录为根；常规 node 运行则以源码上一级为根。可用 APP_ROOT 覆盖。
@@ -112,7 +113,12 @@ const readNcre = () => {
 };
 
 app.get('/api/ncre', (req, res) => {
-  res.json({ ...readNcre(), notifications: readNotifications() });
+  res.json({
+    ...readNcre(),
+    announcements: readAnnouncements(STORE_DIR),
+    job: getJobMeta(),
+    notifications: readNotifications(),
+  });
 });
 
 app.post('/api/ncre', (req, res) => {
@@ -132,16 +138,14 @@ app.post('/api/ncre', (req, res) => {
 });
 
 // ---- 通知接口（预留）：接收通知仅落盘 + 控制台日志；
-// 后续接入邮件 / webhook 等渠道时在此分发 ----
+// 后续接入邮件 / webhook 等渠道时在 pushNotification 里分发 ----
 
 const readNotifications = () => {
   const f = path.join(STORE_DIR, 'notifications.json');
   return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : [];
 };
 
-app.post('/api/notify', (req, res) => {
-  const { event, title, message } = req.body ?? {};
-  if (!event || !title) return res.status(400).json({ error: 'event 与 title 为必填' });
+function pushNotification(event, title, message) {
   const record = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     event,
@@ -155,8 +159,30 @@ app.post('/api/notify', (req, res) => {
   fs.mkdirSync(STORE_DIR, { recursive: true });
   fs.writeFileSync(path.join(STORE_DIR, 'notifications.json'), JSON.stringify(list, null, 2));
   console.log(`[通知] ${event}: ${title} ${message}`);
-  res.status(201).json(record);
+  return record;
+}
+
+app.post('/api/notify', (req, res) => {
+  const { event, title, message } = req.body ?? {};
+  if (!event || !title) return res.status(400).json({ error: 'event 与 title 为必填' });
+  res.status(201).json(pushNotification(event, title, message));
 });
+
+// 手动触发一次 NCRE 公告检查（定时任务之外）
+app.post('/api/ncre/run', async (req, res) => {
+  try {
+    const { fresh, result } = await runNcreCheck(DATA_DIR, STORE_DIR);
+    fresh.forEach((f) => pushNotification('ncre_announcement', `NCRE公告：${f.title}`, f.url));
+    res.json({ result, freshCount: fresh.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 每日 NCRE 公告监控（node-cron，Asia/Shanghai；NCRE_CRON 可覆盖 schedule）
+startNcreJob(DATA_DIR, STORE_DIR, (f) =>
+  pushNotification('ncre_announcement', `NCRE公告：${f.title}`, f.url)
+);
 
 // ---- 成绩单解析 ----
 // 本地 OCR 已移除：解析统一预留为大模型通道。

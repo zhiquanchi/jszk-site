@@ -3,3 +3,6 @@ client/dist/
 tessdata/
 *.log
 .DS_Store
+data/scores.json
+data/notifications.json
+data/ncreJob.json
