@@ -8,6 +8,7 @@ import {
   FormOutlined,
   SwapOutlined,
   CalendarOutlined,
+  DashboardOutlined,
 } from '@ant-design/icons';
 import { getData, getScores, getNcre } from './api.js';
 import Overview from './views/Overview.jsx';
@@ -17,9 +18,11 @@ import Degree from './views/Degree.jsx';
 import Scores from './views/Scores.jsx';
 import CodeChanges from './views/CodeChanges.jsx';
 import Ncre from './views/Ncre.jsx';
+import StudyBoard from './views/StudyBoard.jsx';
 
 const NAV = [
   { key: 'overview', icon: <AppstoreOutlined />, label: '总览' },
+  { key: 'studyboard', icon: <DashboardOutlined />, label: '学习清单' },
   { key: 'plan', icon: <ProfileOutlined />, label: '考试计划' },
   { key: 'exemption', icon: <FileDoneOutlined />, label: '免考中心' },
   { key: 'degree', icon: <TrophyOutlined />, label: '学位攻略' },
@@ -99,6 +102,7 @@ export default function App() {
           {view === 'overview' && (
             <Overview meta={meta} courses={courses} degree={degree} scores={scores} />
           )}
+          {view === 'studyboard' && <StudyBoard courses={courses} scores={scores} />}
           {view === 'plan' && <Plan courses={courses} />}
           {view === 'exemption' && <Exemption courses={courses} policies={policies} />}
           {view === 'degree' && <Degree degree={degree} />}

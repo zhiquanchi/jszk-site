@@ -276,9 +276,14 @@ export default function Scores({ courses, scores, onRefresh }) {
             dataIndex: 'score',
             width: 90,
             render: (v) => (
-              <Tag color={v >= 70 ? 'green' : 'orange'} style={{ fontSize: 13 }}>
-                {v}
-              </Tag>
+              <Space size={4}>
+                <Tag color={v >= 60 ? 'green' : 'red'} style={{ fontSize: 13 }}>
+                  {v}
+                </Tag>
+                <Tag color={v >= 60 ? 'green' : 'red'}>
+                  {v >= 60 ? '合格' : '未通过'}
+                </Tag>
+              </Space>
             ),
           },
           { title: '备注', dataIndex: 'note', ellipsis: true },

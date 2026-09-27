@@ -161,7 +161,8 @@
     "practice": false,
     "degree": false,
     "formerCodes": [
-      "00342"
+      "00342",
+      "04737"
     ],
     "status": "exempt-ok",
     "note": "学历免考或 NCRE 二级C 免考；不影响学位",
@@ -457,6 +458,30 @@
         }
       ],
       "risk": null
+    }
+  },
+  {
+    "code": "04751",
+    "name": "计算机网络安全",
+    "credits": 3,
+    "group": "专业课",
+    "practice": false,
+    "degree": false,
+    "stack": true,
+    "status": "exempt-caution",
+    "note": "与13017计算机网络与信息安全二选一（2026年10月起新增）",
+    "formerCodes": [],
+    "exemption": {
+      "summary": "本课程为专业理论课程。可按本科及以上学历中名称和要求相同且成绩合格的课程申请免考，最终以江苏省教育考试院审核为准。",
+      "paths": [
+        {
+          "type": "学历免考",
+          "condition": "本科及以上毕业生报考自考本科，原学历已取得名称相同、要求相同且成绩合格的课程。",
+          "materials": "毕业证或学历认证报告；原学校盖章学籍卡（含课程、学分、学时、考试类型和成绩）。",
+          "degreeImpact": "非学位要求课程。"
+        }
+      ],
+      "risk": "本课程与13017为二选一，确认报考前请按当次考试计划选择其中一门。"
     }
   },
   {
