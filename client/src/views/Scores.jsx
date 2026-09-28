@@ -274,15 +274,18 @@ export default function Scores({ courses, scores, onRefresh }) {
           {
             title: '分数',
             dataIndex: 'score',
-            width: 90,
-            render: (v) => (
-              <Space size={4}>
+            width: 150,
+            render: (v, r) => (
+              <Space size={4} wrap>
                 <Tag color={v >= 60 ? 'green' : 'red'} style={{ fontSize: 13 }}>
                   {v}
                 </Tag>
                 <Tag color={v >= 60 ? 'green' : 'red'}>
                   {v >= 60 ? '合格' : '未通过'}
                 </Tag>
+                {DEGREE_CODES.includes(r.code) && v >= 60 && v < 70 && (
+                  <Tag color="orange">学位线未达 70</Tag>
+                )}
               </Space>
             ),
           },
