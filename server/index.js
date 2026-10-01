@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import multer from 'multer';
 import { startNcreJob, runNcreCheck, getJobMeta, readAnnouncements } from './ncreJob.js';
+import { mailEnabled, sendMail } from './mailer.js';
 
 // 根目录解析：Bun 单文件编译产物里 import.meta.url 指向虚拟文件系统（$bunfs），
 // 此时以可执行文件所在目录为根；常规 node 运行则以源码上一级为根。可用 APP_ROOT 覆盖。
@@ -137,15 +138,20 @@ app.post('/api/ncre', (req, res) => {
   res.json(data);
 });
 
-// ---- 通知接口（预留）：接收通知仅落盘 + 控制台日志；
-// 后续接入邮件 / webhook 等渠道时在 pushNotification 里分发 ----
+// ---- 通知接口：落盘 + 控制台日志；配置了 DirectMail 时叠加邮件推送 ----
+// delivered 取值：emailed（已提交 DirectMail）/ logged（无邮件渠道，仅落盘）/ email_failed: 原因
 
 const readNotifications = () => {
   const f = path.join(STORE_DIR, 'notifications.json');
   return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : [];
 };
 
-function pushNotification(event, title, message) {
+function writeNotifications(list) {
+  fs.mkdirSync(STORE_DIR, { recursive: true });
+  fs.writeFileSync(path.join(STORE_DIR, 'notifications.json'), JSON.stringify(list, null, 2));
+}
+
+async function pushNotification(event, title, message) {
   const record = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     event,
@@ -154,25 +160,41 @@ function pushNotification(event, title, message) {
     delivered: 'logged',
     time: new Date().toISOString(),
   };
+  console.log(`[通知] ${event}: ${title} ${message}`);
+
+  if (mailEnabled()) {
+    try {
+      const link = message ? `<p style="color:#666">${message}</p>` : '';
+      const r = await sendMail(
+        title,
+        `<h3>${title}</h3>${link}<p style="color:#999;font-size:12px">jszk-site 自动通知 · ${record.time}</p>`
+      );
+      record.delivered = r.ok ? 'emailed' : 'logged';
+    } catch (e) {
+      record.delivered = `email_failed: ${e.message}`;
+      console.error(`[通知] 邮件投递失败：${e.message}`);
+    }
+  }
+
   const list = readNotifications();
   list.push(record);
-  fs.mkdirSync(STORE_DIR, { recursive: true });
-  fs.writeFileSync(path.join(STORE_DIR, 'notifications.json'), JSON.stringify(list, null, 2));
-  console.log(`[通知] ${event}: ${title} ${message}`);
+  writeNotifications(list);
   return record;
 }
 
-app.post('/api/notify', (req, res) => {
+app.post('/api/notify', async (req, res) => {
   const { event, title, message } = req.body ?? {};
   if (!event || !title) return res.status(400).json({ error: 'event 与 title 为必填' });
-  res.status(201).json(pushNotification(event, title, message));
+  res.status(201).json(await pushNotification(event, title, message));
 });
 
 // 手动触发一次 NCRE 公告检查（定时任务之外）
 app.post('/api/ncre/run', async (req, res) => {
   try {
     const { fresh, result } = await runNcreCheck(DATA_DIR, STORE_DIR);
-    fresh.forEach((f) => pushNotification('ncre_announcement', `NCRE公告：${f.title}`, f.url));
+    await Promise.all(
+      fresh.map((f) => pushNotification('ncre_announcement', `NCRE公告：${f.title}`, f.url))
+    );
     res.json({ result, freshCount: fresh.length });
   } catch (e) {
     res.status(500).json({ error: e.message });

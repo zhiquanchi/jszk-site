@@ -107,7 +107,7 @@ export function startNcreJob(dataDir, storeDir, onFresh) {
   timer = cron.schedule(CRON, async () => {
     try {
       const { fresh } = await runNcreCheck(dataDir, storeDir);
-      fresh.forEach((f) => onFresh(f));
+      await Promise.all(fresh.map((f) => onFresh(f)));
     } catch (e) {
       lastResult = `任务异常：${e.message}`;
     }

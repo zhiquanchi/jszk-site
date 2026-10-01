@@ -23,6 +23,22 @@ docker run -d --name jszk-site -p 3001:3001 -v jszk-store:/app/store jszk-site
 
 打开 http://localhost:3001（后端经 Bun 编译为单文件可执行程序，镜像 ~130MB，Express 托管前端产物）。
 
+### 邮件推送（阿里云 DirectMail）
+
+通知接口（NCRE 新公告等）在以下环境变量齐备时自动叠加邮件推送，缺省则只落盘+日志（本地开发零配置）：
+
+| 变量 | 说明 |
+|------|------|
+| `DM_ACCESS_KEY_ID` / `DM_ACCESS_KEY_SECRET` | 有 DirectMail 权限的 RAM 用户 AK |
+| `DM_SENDER` | 发信地址（如 `noreply@mail.zhiquanchi.xyz`） |
+| `DM_TO` | 收件邮箱，多个用英文逗号分隔 |
+| `DM_FROM_ALIAS` | 发件人昵称（默认「自考站监控」） |
+| `DM_ENDPOINT` | 默认 `https://dm.aliyuncs.com` |
+
+凭证文件 `.env.mail`（gitignore）本地留存，服务器上放 `/root/jszk-mail.env`（chmod 600），`docker run --env-file` 注入。投递结果记录在 `notifications.json` 的 `delivered` 字段：`emailed` / `logged` / `email_failed: 原因`。
+
+> 注意：API 创建的发信地址用 `ModifyPWByDomain` 设的 SMTP 密码实测不生效（535），故走 SingleSendMail API 而非 SMTP。
+
 > 开发与 `npm start` 仍走 Node，无需安装 Bun；只有 Docker 构建阶段使用 Bun。
 
 - 可变数据（成绩 / 通知 / NCRE 追踪）持久化在 `jszk-store` 卷（容器内 `/app/store`），静态数据随镜像更新
@@ -63,11 +79,11 @@ web/
 | GET | `/api/ncre` | 上海 NCRE 报名/考试时间追踪 + 通知记录 |
 | POST | `/api/ncre` | 更新 NCRE 批次数据（sessions） |
 | POST | `/api/ncre/run` | 手动触发一次 NCRE 公告抓取检查 |
-| POST | `/api/notify` | 通知接口（预留）：`{event, title, message}`，当前落盘+日志，后续在此接入邮件/webhook 等渠道 |
+| POST | `/api/notify` | 通知接口：`{event, title, message}`，落盘+日志；配置 DirectMail 环境变量后自动叠加邮件推送 |
 
 ## NCRE 报名追踪（服务内每日定时任务）
 
-站点「NCRE 报名」页展示上海市 NCRE（全国计算机等级考试）各批次报名/考试时间。定时任务**跑在应用内**（`server/ncreJob.js`，node-cron，默认每天 9:00 Asia/Shanghai，环境变量 `NCRE_CRON` 可改）：拉取 `data/ncreSources.json` 配置的来源页 → 抓取标题含「计算机等级考试」的公告链接 → 与上次快照对比 → 新公告写入「抓取到的相关公告」并触发 `/api/notify`。页面上可「立即检查」手动触发（`POST /api/ncre/run`）。批次报名/考试时间（`sessions`）仍由 `POST /api/ncre` 维护。关注科目：二级 C（免 13013/13014）、二级 Java（免 04747/04748）。
+站点「NCRE 报名」页展示上海市 NCRE（全国计算机等级考试）各批次报名/考试时间。定时任务**跑在应用内**（`server/ncreJob.js`，node-cron，默认每天 9:00 Asia/Shanghai，环境变量 `NCRE_CRON` 可改）：拉取 `data/ncreSources.json` 配置的来源页 → 抓取标题含「计算机等级考试」的公告链接 → 与上次快照对比 → 新公告写入「抓取到的相关公告」并触发 `/api/notify`（配置邮件渠道后新公告同步推送到邮箱）。页面上可「立即检查」手动触发（`POST /api/ncre/run`）。批次报名/考试时间（`sessions`）仍由 `POST /api/ncre` 维护。关注科目：二级 C（免 13013/13014）、二级 Java（免 04747/04748）。
 
 ## 课程代码变更追踪
 

@@ -5,3 +5,4 @@ tessdata/
 .DS_Store
 data/notifications.json
 data/ncreJob.json
+.env*
