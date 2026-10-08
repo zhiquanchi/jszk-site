@@ -1,6 +1,5 @@
 import express from 'express';
 import compression from 'compression';
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +7,7 @@ import multer from 'multer';
 import { startNcreJob, runNcreCheck, getJobMeta, readAnnouncements } from './ncreJob.js';
 import { mailEnabled, sendMail } from './mailer.js';
 import { readJson, writeJsonAtomic } from './store.js';
+import { createAuth } from './auth.js';
 
 // 根目录解析：Bun 单文件编译产物里 import.meta.url 指向虚拟文件系统（$bunfs），
 // 此时以可执行文件所在目录为根；常规 node 运行则以源码上一级为根。可用 APP_ROOT 覆盖。
@@ -31,21 +31,64 @@ app.disable('x-powered-by');
 app.use(compression());
 app.use(express.json({ limit: '2mb' }));
 
-// ---- 写接口鉴权 ----
-// 站点公网可达，写接口（改成绩/改 NCRE/发通知）必须凭 ADMIN_TOKEN；
-// 未配置 ADMIN_TOKEN 时放行（本地开发零配置），启动时打印告警提醒生产环境务必设置。
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
-const TOKEN_BUF = ADMIN_TOKEN ? Buffer.from(ADMIN_TOKEN) : null;
+// ---- 写接口身份验证：TOTP 动态码（2FA 式）+ 会话票据 ----
+// 站点公网可达，写接口（成绩 / NCRE / 通知）都要验证；验证器 App 的密钥放 TOTP_SECRET。
+// 未配置时放行（本地开发零配置），启动时打印告警提醒生产环境务必设置。
+const TOTP_SECRET = process.env.TOTP_SECRET || '';
+const SESSION_TTL_HOURS = Number(process.env.SESSION_TTL_HOURS || 12);
+const auth = TOTP_SECRET
+  ? createAuth({ secret: TOTP_SECRET, ttlMs: SESSION_TTL_HOURS * 3600 * 1000 })
+  : null;
 
-function tokenOk(req) {
-  const given = Buffer.from(req.get('x-auth-token') || '');
-  return given.length === TOKEN_BUF.length && crypto.timingSafeEqual(given, TOKEN_BUF);
+// 6 位码只有 100 万种可能，必须限流：同一 IP 在窗口内失败到上限就临时封禁
+const MAX_FAILS = Number(process.env.TOTP_MAX_FAILS || 8);
+const FAIL_WINDOW_MS = 10 * 60 * 1000;
+const authFails = new Map();
+
+function blockRemainingMs(ip) {
+  const rec = authFails.get(ip);
+  if (!rec) return 0;
+  const age = Date.now() - rec.firstAt;
+  if (age > FAIL_WINDOW_MS) {
+    authFails.delete(ip);
+    return 0;
+  }
+  return rec.count >= MAX_FAILS ? FAIL_WINDOW_MS - age : 0;
 }
 
-function requireToken(req, res, next) {
-  if (!TOKEN_BUF || tokenOk(req)) return next();
-  res.status(401).json({ error: '需要写入密钥：请在页面左下角「写入密钥」填入 ADMIN_TOKEN' });
+function noteAuthFail(ip) {
+  const now = Date.now();
+  const rec = authFails.get(ip);
+  if (!rec || now - rec.firstAt > FAIL_WINDOW_MS) authFails.set(ip, { count: 1, firstAt: now });
+  else rec.count += 1;
 }
+
+function requireAuth(req, res, next) {
+  if (!auth) return next();
+  const session = auth.verifySession(req.get('x-auth-token'));
+  // 也接受直接提交一次性动态码（脚本 / curl 不必先换票据）
+  const codeOk = !session && auth.verifyCode(req.get('x-totp-code'));
+  if (session || codeOk) return next();
+  res.status(401).json({ error: '需要验证：请点左下角「写入验证」输入验证器 App 上的 6 位动态码' });
+}
+
+// 动态码 → 会话票据（默认 12 小时，避免每次写操作都去读验证器）
+app.post('/api/auth/verify', (req, res) => {
+  if (!auth) return res.status(400).json({ error: '服务端未配置 TOTP_SECRET' });
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+  const wait = blockRemainingMs(ip);
+  if (wait > 0) {
+    return res.status(429).json({ error: `动态码尝试次数过多，请 ${Math.ceil(wait / 60000)} 分钟后再试` });
+  }
+  const code = req.body?.code;
+  if (!auth.verifyCode(code)) {
+    noteAuthFail(ip);
+    console.warn(`[验证失败] ${ip} 动态码不正确`);
+    return res.status(401).json({ error: '动态码不正确或已过期，请重新读取验证器上的 6 位码' });
+  }
+  authFails.delete(ip);
+  res.json(auth.issueSession());
+});
 
 const readJSON = (file) => JSON.parse(fs.readFileSync(path.join(DATA_DIR, file), 'utf8'));
 const courses = () => readJSON('courses.json');
@@ -100,7 +143,7 @@ app.get('/api/scores', (req, res) => {
   res.json(readScores());
 });
 
-app.post('/api/scores', requireToken, (req, res) => {
+app.post('/api/scores', requireAuth, (req, res) => {
   const record = makeRecord(req.body);
   if (!record) return res.status(400).json({ error: 'code 与 0–100 的数字型 score 为必填' });
   const scores = readScores();
@@ -111,7 +154,7 @@ app.post('/api/scores', requireToken, (req, res) => {
 
 // 批量导入（成绩单解析确认后使用）：与已有记录重复的（同课+同类型+同分）跳过，
 // 重复导入同一张成绩单不会产生双份记录；分数不同则视为重考新记录照常写入。
-app.post('/api/scores/bulk', requireToken, (req, res) => {
+app.post('/api/scores/bulk', requireAuth, (req, res) => {
   const items = Array.isArray(req.body) ? req.body : req.body?.items;
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'body 需为非空数组' });
@@ -137,7 +180,7 @@ app.post('/api/scores/bulk', requireToken, (req, res) => {
   res.status(201).json({ added: added.length, skipped, records: added });
 });
 
-app.delete('/api/scores/:id', requireToken, (req, res) => {
+app.delete('/api/scores/:id', requireAuth, (req, res) => {
   writeScores(readScores().filter((s) => s.id !== req.params.id));
   res.json({ ok: true });
 });
@@ -159,7 +202,7 @@ app.get('/api/ncre', (req, res) => {
   });
 });
 
-app.post('/api/ncre', requireToken, (req, res) => {
+app.post('/api/ncre', requireAuth, (req, res) => {
   const { source, note, sessions } = req.body ?? {};
   if (!Array.isArray(sessions) || sessions.length === 0) {
     return res.status(400).json({ error: 'body 需含非空 sessions 数组' });
@@ -223,14 +266,14 @@ async function pushNotification(event, title, message) {
   return record;
 }
 
-app.post('/api/notify', requireToken, async (req, res) => {
+app.post('/api/notify', requireAuth, async (req, res) => {
   const { event, title, message } = req.body ?? {};
   if (!event || !title) return res.status(400).json({ error: 'event 与 title 为必填' });
   res.status(201).json(await pushNotification(event, title, message));
 });
 
 // 手动触发一次 NCRE 公告检查（定时任务之外）
-app.post('/api/ncre/run', requireToken, async (req, res) => {
+app.post('/api/ncre/run', requireAuth, async (req, res) => {
   try {
     const { fresh, result } = await runNcreCheck(DATA_DIR, STORE_DIR);
     await Promise.all(
@@ -296,7 +339,7 @@ function parseCandidates(text) {
   return [...found.values()];
 }
 
-app.post('/api/scores/parse', requireToken, upload.single('file'), async (req, res) => {
+app.post('/api/scores/parse', requireAuth, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: '未收到文件' });
   try {
     const parsed = await parseFile(req.file);
@@ -336,7 +379,12 @@ app.listen(PORT, () => {
       ? '生产模式：已托管前端产物'
       : '开发模式：前端请走 Vite dev server（http://localhost:5173）'
   );
-  if (!TOKEN_BUF) {
-    console.warn('[安全] 未配置 ADMIN_TOKEN：写接口（成绩/NCRE/通知）当前无鉴权，公网部署请务必设置');
+  if (!auth) {
+    console.warn('[安全] 未配置 TOTP_SECRET：写接口（成绩/NCRE/通知）当前无验证，公网部署请务必设置');
+  } else {
+    console.log(`写接口验证已开启：TOTP ${auth.digits} 位动态码 / 票据有效期 ${SESSION_TTL_HOURS} 小时`);
+    if (process.env.TOTP_PRINT_URI === '1') {
+      console.log(`验证器录入地址：${auth.otpauthUri(process.env.TOTP_ACCOUNT || 'owner')}`);
+    }
   }
 });
