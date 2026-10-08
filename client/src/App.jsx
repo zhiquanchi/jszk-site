@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Layout, Menu, App as AntApp } from 'antd';
 import {
   AppstoreOutlined,
@@ -11,14 +11,16 @@ import {
   DashboardOutlined,
 } from '@ant-design/icons';
 import { getData, getScores, getNcre } from './api.js';
+// 默认落地页（总览）静态引入，首屏无需再等一次异步请求；其余视图按需加载
 import Overview from './views/Overview.jsx';
-import Plan from './views/Plan.jsx';
-import Exemption from './views/Exemption.jsx';
-import Degree from './views/Degree.jsx';
-import Scores from './views/Scores.jsx';
-import CodeChanges from './views/CodeChanges.jsx';
-import Ncre from './views/Ncre.jsx';
-import StudyBoard from './views/StudyBoard.jsx';
+
+const StudyBoard = lazy(() => import('./views/StudyBoard.jsx'));
+const Plan = lazy(() => import('./views/Plan.jsx'));
+const Exemption = lazy(() => import('./views/Exemption.jsx'));
+const Degree = lazy(() => import('./views/Degree.jsx'));
+const Scores = lazy(() => import('./views/Scores.jsx'));
+const Ncre = lazy(() => import('./views/Ncre.jsx'));
+const CodeChanges = lazy(() => import('./views/CodeChanges.jsx'));
 
 const NAV = [
   { key: 'overview', icon: <AppstoreOutlined />, label: '总览' },
@@ -99,16 +101,18 @@ export default function App() {
       </Layout.Sider>
       <Layout>
         <Layout.Content className="main">
-          {view === 'overview' && (
-            <Overview meta={meta} courses={courses} degree={degree} scores={scores} />
-          )}
-          {view === 'studyboard' && <StudyBoard courses={courses} scores={scores} />}
-          {view === 'plan' && <Plan courses={courses} />}
-          {view === 'exemption' && <Exemption courses={courses} policies={policies} />}
-          {view === 'degree' && <Degree degree={degree} />}
-          {view === 'scores' && <Scores courses={courses} scores={scores} onRefresh={refreshScores} />}
-          {view === 'ncre' && ncre && <Ncre ncre={ncre} onRefresh={refreshNcre} />}
-          {view === 'codechanges' && <CodeChanges codeChanges={codeChanges} />}
+          <Suspense fallback={<div className="page-msg">加载中…</div>}>
+            {view === 'overview' && (
+              <Overview meta={meta} courses={courses} degree={degree} scores={scores} />
+            )}
+            {view === 'studyboard' && <StudyBoard courses={courses} scores={scores} />}
+            {view === 'plan' && <Plan courses={courses} />}
+            {view === 'exemption' && <Exemption courses={courses} policies={policies} />}
+            {view === 'degree' && <Degree degree={degree} />}
+            {view === 'scores' && <Scores courses={courses} scores={scores} onRefresh={refreshScores} />}
+            {view === 'ncre' && ncre && <Ncre ncre={ncre} onRefresh={refreshNcre} />}
+            {view === 'codechanges' && <CodeChanges codeChanges={codeChanges} />}
+          </Suspense>
         </Layout.Content>
         <Layout.Footer className="foot">
           个人学习资料站 · 数据以江苏省教育考试院最新公告为准 · 整理于 {meta.updated}

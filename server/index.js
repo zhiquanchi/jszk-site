@@ -1,4 +1,5 @@
 import express from 'express';
+import compression from 'compression';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +24,9 @@ const CLIENT_DIST = path.join(ROOT, 'client', 'dist');
 const PORT = process.env.PORT || 3001;
 
 const app = express();
+app.disable('x-powered-by');
+// 前端是单文件大包（antd），gzip 后约为原始的 1/3
+app.use(compression());
 app.use(express.json({ limit: '2mb' }));
 
 const readJSON = (file) => JSON.parse(fs.readFileSync(path.join(DATA_DIR, file), 'utf8'));
@@ -265,9 +269,23 @@ app.post('/api/scores/parse', upload.single('file'), async (req, res) => {
 });
 
 // 生产模式：存在 client/dist 时直接托管前端产物
+const ASSETS_DIR = path.join(CLIENT_DIST, 'assets');
 if (fs.existsSync(CLIENT_DIST)) {
-  app.use(express.static(CLIENT_DIST));
-  app.get(/^\/(?!api\/).*/, (req, res) => res.sendFile(path.join(CLIENT_DIST, 'index.html')));
+  app.use(
+    express.static(CLIENT_DIST, {
+      setHeaders(res, filePath) {
+        // assets/ 下文件名带内容哈希 → 可以永久缓存；index.html 必须每次回源校验
+        res.setHeader(
+          'Cache-Control',
+          filePath.startsWith(ASSETS_DIR) ? 'public, max-age=31536000, immutable' : 'no-cache'
+        );
+      },
+    })
+  );
+  // SPA 兜底：只回前端路由，/assets/ 下不存在的文件照常 404
+  app.get(/^\/(?!api\/|assets\/).*/, (req, res) =>
+    res.sendFile(path.join(CLIENT_DIST, 'index.html'))
+  );
 }
 
 app.listen(PORT, () => {
