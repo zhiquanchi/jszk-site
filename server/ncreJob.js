@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import cron from 'node-cron';
+import { readJson, writeJsonAtomic } from './store.js';
 
 // NCRE 公告监控定时任务：每天定时拉取来源页，抓取标题含关键词的公告链接，
 // 与上次快照对比，新公告通过回调触发通知。来源与关键词配置在 data/ncreSources.json。
@@ -10,17 +11,16 @@ const TIMEZONE = 'Asia/Shanghai';
 let timer = null;
 let lastRunAt = null;
 let lastResult = null;
+let running = false; // 定时任务与「立即检查」互斥，避免并发跑导致重复通知
 
 const snapshotFile = (storeDir) => path.join(storeDir, 'ncreJob.json');
 
 function readSnapshot(storeDir) {
-  const f = snapshotFile(storeDir);
-  return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : { announcements: [] };
+  return readJson(snapshotFile(storeDir), { announcements: [] });
 }
 
 function writeSnapshot(storeDir, snap) {
-  fs.mkdirSync(storeDir, { recursive: true });
-  fs.writeFileSync(snapshotFile(storeDir), JSON.stringify(snap, null, 2));
+  writeJsonAtomic(snapshotFile(storeDir), snap);
 }
 
 export function readAnnouncements(storeDir) {
@@ -57,6 +57,16 @@ function extractLinks(html, base, keyword) {
 }
 
 export async function runNcreCheck(dataDir, storeDir) {
+  if (running) return { fresh: [], result: '已有检查正在进行中，本次跳过' };
+  running = true;
+  try {
+    return await doCheck(dataDir, storeDir);
+  } finally {
+    running = false;
+  }
+}
+
+async function doCheck(dataDir, storeDir) {
   lastRunAt = new Date().toISOString();
   const cfg = JSON.parse(fs.readFileSync(path.join(dataDir, 'ncreSources.json'), 'utf8'));
   const prev = readSnapshot(storeDir);

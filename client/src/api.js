@@ -1,5 +1,20 @@
-async function fetchJSON(url, options) {
-  const res = await fetch(url, options);
+import { getToken, requestToken } from './auth.js';
+
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+async function fetchJSON(url, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  const token = getToken();
+  const headers = { ...(options.headers || {}) };
+  if (token && WRITE_METHODS.has(method)) headers['X-Auth-Token'] = token;
+
+  const res = await fetch(url, { ...options, headers });
+
+  if (res.status === 401) {
+    requestToken(); // 让 App 弹出「写入密钥」输入框
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || '需要写入密钥');
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `${res.status} ${res.statusText}`);

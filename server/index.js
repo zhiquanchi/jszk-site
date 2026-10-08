@@ -1,11 +1,13 @@
 import express from 'express';
 import compression from 'compression';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import multer from 'multer';
 import { startNcreJob, runNcreCheck, getJobMeta, readAnnouncements } from './ncreJob.js';
 import { mailEnabled, sendMail } from './mailer.js';
+import { readJson, writeJsonAtomic } from './store.js';
 
 // 根目录解析：Bun 单文件编译产物里 import.meta.url 指向虚拟文件系统（$bunfs），
 // 此时以可执行文件所在目录为根；常规 node 运行则以源码上一级为根。可用 APP_ROOT 覆盖。
@@ -29,6 +31,22 @@ app.disable('x-powered-by');
 app.use(compression());
 app.use(express.json({ limit: '2mb' }));
 
+// ---- 写接口鉴权 ----
+// 站点公网可达，写接口（改成绩/改 NCRE/发通知）必须凭 ADMIN_TOKEN；
+// 未配置 ADMIN_TOKEN 时放行（本地开发零配置），启动时打印告警提醒生产环境务必设置。
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+const TOKEN_BUF = ADMIN_TOKEN ? Buffer.from(ADMIN_TOKEN) : null;
+
+function tokenOk(req) {
+  const given = Buffer.from(req.get('x-auth-token') || '');
+  return given.length === TOKEN_BUF.length && crypto.timingSafeEqual(given, TOKEN_BUF);
+}
+
+function requireToken(req, res, next) {
+  if (!TOKEN_BUF || tokenOk(req)) return next();
+  res.status(401).json({ error: '需要写入密钥：请在页面左下角「写入密钥」填入 ADMIN_TOKEN' });
+}
+
 const readJSON = (file) => JSON.parse(fs.readFileSync(path.join(DATA_DIR, file), 'utf8'));
 const courses = () => readJSON('courses.json');
 const codeChanges = () => readJSON('codeChanges.json');
@@ -46,11 +64,10 @@ app.get('/api/data', (req, res) => {
   });
 });
 
-// ---- 成绩记录（持久化到 data/scores.json）----
+// ---- 成绩记录（持久化到 STORE_DIR/scores.json）----
 
-const readScores = () =>
-  fs.existsSync(SCORES_FILE) ? JSON.parse(fs.readFileSync(SCORES_FILE, 'utf8')) : [];
-const writeScores = (scores) => fs.writeFileSync(SCORES_FILE, JSON.stringify(scores, null, 2));
+const readScores = () => readJson(SCORES_FILE, []);
+const writeScores = (scores) => writeJsonAtomic(SCORES_FILE, scores);
 
 // 录入时若用了旧课程代码，自动归一到现行代码并保留原代码痕迹
 function normalizeCode(rawCode) {
@@ -79,7 +96,7 @@ app.get('/api/scores', (req, res) => {
   res.json(readScores());
 });
 
-app.post('/api/scores', (req, res) => {
+app.post('/api/scores', requireToken, (req, res) => {
   const record = makeRecord(req.body);
   if (!record) return res.status(400).json({ error: 'code 与数字型 score 为必填' });
   const scores = readScores();
@@ -89,7 +106,7 @@ app.post('/api/scores', (req, res) => {
 });
 
 // 批量导入（成绩单解析确认后使用）
-app.post('/api/scores/bulk', (req, res) => {
+app.post('/api/scores/bulk', requireToken, (req, res) => {
   const items = Array.isArray(req.body) ? req.body : req.body?.items;
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'body 需为非空数组' });
@@ -104,7 +121,7 @@ app.post('/api/scores/bulk', (req, res) => {
   res.status(201).json({ added: records.length, records });
 });
 
-app.delete('/api/scores/:id', (req, res) => {
+app.delete('/api/scores/:id', requireToken, (req, res) => {
   writeScores(readScores().filter((s) => s.id !== req.params.id));
   res.json({ ok: true });
 });
@@ -112,9 +129,9 @@ app.delete('/api/scores/:id', (req, res) => {
 // ---- NCRE 报名信息（每日定时任务经 POST /api/ncre 更新）----
 
 const readNcre = () => {
+  // 优先卷里的运行时数据，其次镜像内的静态初始数据
   const storeFile = path.join(STORE_DIR, 'ncre.json');
-  if (fs.existsSync(storeFile)) return JSON.parse(fs.readFileSync(storeFile, 'utf8'));
-  return JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'ncre.json'), 'utf8'));
+  return readJson(storeFile, null) ?? readJson(path.join(DATA_DIR, 'ncre.json'));
 };
 
 app.get('/api/ncre', (req, res) => {
@@ -126,7 +143,7 @@ app.get('/api/ncre', (req, res) => {
   });
 });
 
-app.post('/api/ncre', (req, res) => {
+app.post('/api/ncre', requireToken, (req, res) => {
   const { source, note, sessions } = req.body ?? {};
   if (!Array.isArray(sessions) || sessions.length === 0) {
     return res.status(400).json({ error: 'body 需含非空 sessions 数组' });
@@ -137,23 +154,25 @@ app.post('/api/ncre', (req, res) => {
     note: note || '',
     sessions,
   };
-  fs.mkdirSync(STORE_DIR, { recursive: true });
-  fs.writeFileSync(path.join(STORE_DIR, 'ncre.json'), JSON.stringify(data, null, 2));
+  writeJsonAtomic(path.join(STORE_DIR, 'ncre.json'), data);
   res.json(data);
 });
 
 // ---- 通知接口：落盘 + 控制台日志；配置了 DirectMail 时叠加邮件推送 ----
 // delivered 取值：emailed（已提交 DirectMail）/ logged（无邮件渠道，仅落盘）/ email_failed: 原因
 
-const readNotifications = () => {
-  const f = path.join(STORE_DIR, 'notifications.json');
-  return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : [];
-};
+const readNotifications = () => readJson(path.join(STORE_DIR, 'notifications.json'), []);
 
 function writeNotifications(list) {
-  fs.mkdirSync(STORE_DIR, { recursive: true });
-  fs.writeFileSync(path.join(STORE_DIR, 'notifications.json'), JSON.stringify(list, null, 2));
+  writeJsonAtomic(path.join(STORE_DIR, 'notifications.json'), list);
 }
+
+// 邮件正文是 HTML：标题可能来自抓取的第三方页面，必须转义后再拼接，避免 HTML 注入
+const escapeHtml = (s) =>
+  String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// 邮件主题是纯文本 header，去掉换行等控制字符
+const sanitizeSubject = (s) => String(s).replace(/[\r\n\t]+/g, ' ').slice(0, 200);
 
 async function pushNotification(event, title, message) {
   const record = {
@@ -168,10 +187,12 @@ async function pushNotification(event, title, message) {
 
   if (mailEnabled()) {
     try {
-      const link = message ? `<p style="color:#666">${message}</p>` : '';
+      const extra = message
+        ? `<p style="color:#666;word-break:break-all">${escapeHtml(message)}</p>`
+        : '';
       const r = await sendMail(
-        title,
-        `<h3>${title}</h3>${link}<p style="color:#999;font-size:12px">jszk-site 自动通知 · ${record.time}</p>`
+        sanitizeSubject(title),
+        `<h3>${escapeHtml(title)}</h3>${extra}<p style="color:#999;font-size:12px">jszk-site 自动通知 · ${record.time}</p>`
       );
       record.delivered = r.ok ? 'emailed' : 'logged';
     } catch (e) {
@@ -186,14 +207,14 @@ async function pushNotification(event, title, message) {
   return record;
 }
 
-app.post('/api/notify', async (req, res) => {
+app.post('/api/notify', requireToken, async (req, res) => {
   const { event, title, message } = req.body ?? {};
   if (!event || !title) return res.status(400).json({ error: 'event 与 title 为必填' });
   res.status(201).json(await pushNotification(event, title, message));
 });
 
 // 手动触发一次 NCRE 公告检查（定时任务之外）
-app.post('/api/ncre/run', async (req, res) => {
+app.post('/api/ncre/run', requireToken, async (req, res) => {
   try {
     const { fresh, result } = await runNcreCheck(DATA_DIR, STORE_DIR);
     await Promise.all(
@@ -258,7 +279,7 @@ function parseCandidates(text) {
   return [...found.values()];
 }
 
-app.post('/api/scores/parse', upload.single('file'), async (req, res) => {
+app.post('/api/scores/parse', requireToken, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: '未收到文件' });
   try {
     const { text, candidates } = await parseFile(req.file);
@@ -295,4 +316,7 @@ app.listen(PORT, () => {
       ? '生产模式：已托管前端产物'
       : '开发模式：前端请走 Vite dev server（http://localhost:5173）'
   );
+  if (!TOKEN_BUF) {
+    console.warn('[安全] 未配置 ADMIN_TOKEN：写接口（成绩/NCRE/通知）当前无鉴权，公网部署请务必设置');
+  }
 });

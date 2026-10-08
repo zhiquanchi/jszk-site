@@ -70,6 +70,18 @@ body {
   line-height: 1.6;
 }
 
+.sider-foot .key-btn {
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0;
+  height: 24px;
+  margin-bottom: 6px;
+}
+
+.sider-foot .key-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .ant-layout-sider-collapsed .sider-foot {
   display: none;
 }

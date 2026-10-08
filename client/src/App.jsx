@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Layout, Menu, App as AntApp } from 'antd';
+import { Button, Layout, Menu, App as AntApp } from 'antd';
 import {
   AppstoreOutlined,
   ProfileOutlined,
@@ -9,8 +9,11 @@ import {
   SwapOutlined,
   CalendarOutlined,
   DashboardOutlined,
+  KeyOutlined,
 } from '@ant-design/icons';
 import { getData, getScores, getNcre } from './api.js';
+import { NEED_TOKEN_EVENT } from './auth.js';
+import ErrorBoundary from './ErrorBoundary.jsx';
 // 默认落地页（总览）静态引入，首屏无需再等一次异步请求；其余视图按需加载
 import Overview from './views/Overview.jsx';
 
@@ -21,6 +24,7 @@ const Degree = lazy(() => import('./views/Degree.jsx'));
 const Scores = lazy(() => import('./views/Scores.jsx'));
 const Ncre = lazy(() => import('./views/Ncre.jsx'));
 const CodeChanges = lazy(() => import('./views/CodeChanges.jsx'));
+const TokenModal = lazy(() => import('./TokenModal.jsx'));
 
 const NAV = [
   { key: 'overview', icon: <AppstoreOutlined />, label: '总览' },
@@ -42,11 +46,19 @@ export default function App() {
   const [scores, setScores] = useState([]);
   const [ncre, setNcre] = useState(null);
   const [error, setError] = useState('');
+  const [tokenOpen, setTokenOpen] = useState(false);
 
   useEffect(() => {
     const onHash = () => setView(currentView());
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  // 写请求遇到 401 时 api.js 会广播，这里把密钥输入框弹出来
+  useEffect(() => {
+    const onNeedToken = () => setTokenOpen(true);
+    window.addEventListener(NEED_TOKEN_EVENT, onNeedToken);
+    return () => window.removeEventListener(NEED_TOKEN_EVENT, onNeedToken);
   }, []);
 
   useEffect(() => {
@@ -96,28 +108,45 @@ export default function App() {
           style={{ borderInlineEnd: 'none' }}
         />
         <div className="sider-foot">
-          {meta.code} · 主考：南京航空航天大学
+          <Button
+            size="small"
+            type="text"
+            className="key-btn"
+            icon={<KeyOutlined />}
+            onClick={() => setTokenOpen(true)}
+          >
+            写入密钥
+          </Button>
+          <div>{meta.code} · 主考：南京航空航天大学</div>
         </div>
       </Layout.Sider>
       <Layout>
         <Layout.Content className="main">
-          <Suspense fallback={<div className="page-msg">加载中…</div>}>
-            {view === 'overview' && (
-              <Overview meta={meta} courses={courses} degree={degree} scores={scores} />
-            )}
-            {view === 'studyboard' && <StudyBoard courses={courses} scores={scores} />}
-            {view === 'plan' && <Plan courses={courses} />}
-            {view === 'exemption' && <Exemption courses={courses} policies={policies} />}
-            {view === 'degree' && <Degree degree={degree} />}
-            {view === 'scores' && <Scores courses={courses} scores={scores} onRefresh={refreshScores} />}
-            {view === 'ncre' && ncre && <Ncre ncre={ncre} onRefresh={refreshNcre} />}
-            {view === 'codechanges' && <CodeChanges codeChanges={codeChanges} />}
-          </Suspense>
+          {/* key=view：切换页面自动复位错误状态，一个页面崩了不影响其他页面 */}
+          <ErrorBoundary key={view}>
+            <Suspense fallback={<div className="page-msg">加载中…</div>}>
+              {view === 'overview' && (
+                <Overview meta={meta} courses={courses} degree={degree} scores={scores} />
+              )}
+              {view === 'studyboard' && <StudyBoard courses={courses} scores={scores} />}
+              {view === 'plan' && <Plan courses={courses} />}
+              {view === 'exemption' && <Exemption courses={courses} policies={policies} />}
+              {view === 'degree' && <Degree degree={degree} />}
+              {view === 'scores' && <Scores courses={courses} scores={scores} onRefresh={refreshScores} />}
+              {view === 'ncre' && ncre && <Ncre ncre={ncre} onRefresh={refreshNcre} />}
+              {view === 'codechanges' && <CodeChanges codeChanges={codeChanges} />}
+            </Suspense>
+          </ErrorBoundary>
         </Layout.Content>
         <Layout.Footer className="foot">
           个人学习资料站 · 数据以江苏省教育考试院最新公告为准 · 整理于 {meta.updated}
         </Layout.Footer>
       </Layout>
+      {tokenOpen && (
+        <Suspense fallback={null}>
+          <TokenModal open onClose={() => setTokenOpen(false)} />
+        </Suspense>
+      )}
     </Layout>
   );
 }
