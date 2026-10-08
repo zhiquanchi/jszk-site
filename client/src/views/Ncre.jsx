@@ -170,8 +170,8 @@ export default function Ncre({ ncre, onRefresh }) {
         </Typography.Paragraph>
         <Typography.Text type="secondary">
           邮件渠道：配置阿里云 DirectMail 的 <Typography.Text code>DM_*</Typography.Text>{' '}
-          环境变量后自动发信（收件箱见下方「投递」列）；未配置时只落盘。写入接口需在页面左下角
-          「写入密钥」填入 <Typography.Text code>ADMIN_TOKEN</Typography.Text>。
+          环境变量后自动发信（收件箱见下方「投递」列）；未配置时只落盘。写入接口用验证器 App
+          的 6 位动态码解锁：点左下角「写入验证」输入当前动态码，通过后本机默认 12 小时内免输。
         </Typography.Text>
       </Card>
 

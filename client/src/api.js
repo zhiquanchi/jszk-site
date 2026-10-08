@@ -1,4 +1,4 @@
-import { getToken, requestToken } from './auth.js';
+import { clearSession, getToken, requestAuth } from './auth.js';
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -10,10 +10,12 @@ async function fetchJSON(url, options = {}) {
 
   const res = await fetch(url, { ...options, headers });
 
-  if (res.status === 401) {
-    requestToken(); // 让 App 弹出「写入密钥」输入框
+  if (res.status === 401 || res.status === 429) {
+    // 票据失效/被限流：清掉本地票据并让 App 弹出验证面板（429 时面板会显示原因）
+    if (res.status === 401) clearSession();
+    if (url !== '/api/auth/verify') requestAuth();
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || '需要写入密钥');
+    throw new Error(body.error || '需要验证');
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -25,6 +27,13 @@ async function fetchJSON(url, options = {}) {
 export const getData = () => fetchJSON('/api/data');
 export const getScores = () => fetchJSON('/api/scores');
 export const getNcre = () => fetchJSON('/api/ncre');
+// 用验证器 App 的 6 位动态码换会话票据
+export const verifyCode = (code) =>
+  fetchJSON('/api/auth/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
 export const runNcreCheck = () => fetchJSON('/api/ncre/run', { method: 'POST' });
 export const addScore = (record) =>
   fetchJSON('/api/scores', {

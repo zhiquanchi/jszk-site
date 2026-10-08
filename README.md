@@ -25,22 +25,28 @@ docker run -d --name jszk-site -p 3001:3001 -v jszk-store:/app/store jszk-site
 
 生产模式下前端产物由 Express 直接托管：响应默认 gzip 压缩，`/assets/` 下带内容哈希的文件发 `immutable` 长缓存，`index.html` 每次回源校验（`no-cache`）。前端按视图分包：首屏只加载「总览」相关 chunk（约 270 KB gzip），其余页面切到时再取。
 
-### 写入鉴权（ADMIN_TOKEN）
+### 写入验证（TOTP 动态码，2FA 式）
 
-站点公网可达，写接口（成绩增删、NCRE 批次、通知）凭 `ADMIN_TOKEN` 校验：
+站点公网可达，写接口（成绩增删、NCRE 批次、通知）必须通过 **TOTP 动态码**（RFC 6238，Google Authenticator 式 6 位码、每 30 秒刷新）验证：
 
 | 变量 | 说明 |
 |------|------|
-| `ADMIN_TOKEN` | 写接口密钥。**未配置时不校验**（本地开发零配置），公网部署务必设置 |
+| `TOTP_SECRET` | 验证器密钥（base32）。**未配置时不校验**（本地开发零配置），公网部署务必设置 |
+| `SESSION_TTL_HOURS` | 动态码验证通过后的写入许可时长，默认 12 小时 |
+| `TOTP_MAX_FAILS` | 同一 IP 在 10 分钟内允许的失败次数，超出临时限制，默认 8 |
+| `TOTP_PRINT_URI` / `TOTP_ACCOUNT` | 设为 `1` 时启动日志打印验证器录入地址（方便首次配置），账号名默认 owner |
 
-设置后在页面左下角「🔑 写入密钥」粘贴一次即可（存浏览器 localStorage，随写请求以 `X-Auth-Token` 头发送，不进仓库与构建产物）。未填或填错时写操作返回 401 并自动弹出输入框。
+流程：验证器 App 里录入密钥 → 页面左下角「写入验证」输入当前 6 位码 → 服务端校验后签发会话票据（HMAC 签名、自带过期时间，`POST /api/auth/verify`）→ 票据随写请求以 `X-Auth-Token` 头发送，到期或点「立即锁定」后需重新输码。脚本/curl 也可以直接带 `X-TOTP-Code: <当前动态码>` 调用写接口，无需先换票据。
 
 ```bash
-# 生成一个密钥
-openssl rand -hex 24
-# 服务器上写进环境文件（与 DM_* 同一个 --env-file）
-echo 'ADMIN_TOKEN=生成的密钥' >> /root/jszk-mail.env
+# 生成密钥（base32）并写入服务器环境文件（与 DM_* 同一个 --env-file）
+node -e "import('./server/auth.js').then(m=>console.log(m.generateSecret()))"
+echo 'TOTP_SECRET=生成的密钥' >> /root/jszk-mail.env
+# 验证器录入：用 App 扫 otpauth 地址，或手动输入密钥（算法 SHA1 / 6 位 / 30 秒）
+#   otpauth://totp/jszk-site:owner?secret=<密钥>&issuer=jszk-site&algorithm=SHA1&digits=6&period=30
 ```
+
+实现是零依赖的（`server/auth.js` 手写 base32/HOTP/TOTP/票据签名），正确性由 `node server/auth.selftest.js` 用 RFC 4226 / RFC 6238 官方向量校验。
 
 ### 邮件推送（阿里云 DirectMail）
 
@@ -78,8 +84,10 @@ web/
 │   └── src/
 │       ├── views/   总览 / 学习清单 / 考试计划 / 免考中心 / 学位攻略 / 成绩记录 / NCRE 报名 / 代码变更
 │       ├── scoring.js    成绩判读唯一口径（60 分合格线、学位 70 分线、论文类不计入课程口径）
-│       └── auth.js       写入密钥（localStorage ↔ X-Auth-Token）
+│       ├── auth.js       写入验证状态（会话票据 ↔ X-Auth-Token）与 401 广播
+│       └── AuthModal.jsx 写入验证面板（输入验证器 6 位动态码）
 ├── server/          Express API（store.js 负责可变数据的原子读写）
+│   ├── auth.js           TOTP 动态码 + 会话票据（零依赖，配 auth.selftest.js RFC 向量自测）
 ├── data/            数据层（改这里即可更新站点内容，不用动代码）
 │   ├── courses.json      22 门课程 + 每门课的免考策略（路径/条件/材料/学位影响）
 │   ├── policies.json     免考政策（证书类/学历类/限制/流程）
@@ -96,6 +104,7 @@ web/
 |------|------|------|------|
 | GET | `/api/data` | — | 站点全部静态数据（课程/政策/学位/代码变更） |
 | GET | `/api/scores` | — | 成绩列表 |
+| POST | `/api/auth/verify` | 动态码 | 提交验证器 6 位动态码 `{code}`，返回会话票据 `{token, expiresAt}`；带尝试次数限制（429） |
 | POST | `/api/scores` | 🔑 | 新增成绩（旧课程代码自动归一为现行代码） |
 | POST | `/api/scores/bulk` | 🔑 | 批量导入（成绩单解析确认后）；与已有记录同课同类型同分数的条目自动跳过，返回 `{added, skipped}` |
 | DELETE | `/api/scores/:id` | 🔑 | 删除成绩 |
@@ -105,7 +114,7 @@ web/
 | POST | `/api/ncre/run` | 🔑 | 手动触发一次 NCRE 公告抓取检查（与定时任务互斥，不并发） |
 | POST | `/api/notify` | 🔑 | 通知接口：`{event, title, message}`，落盘+日志；配置 DirectMail 环境变量后自动叠加邮件推送 |
 
-🔑 = 需请求头 `X-Auth-Token`（服务端配置了 `ADMIN_TOKEN` 时才校验）。
+🔑 = 需通过 TOTP 验证：请求头 `X-Auth-Token`（`/api/auth/verify` 换来的会话票据）或 `X-TOTP-Code`（当前 6 位动态码）；服务端未配置 `TOTP_SECRET` 时不校验。
 
 ## NCRE 报名追踪（服务内每日定时任务）
 

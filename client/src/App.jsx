@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
 import { Button, Layout, Menu, App as AntApp } from 'antd';
 import {
   AppstoreOutlined,
@@ -10,9 +10,10 @@ import {
   CalendarOutlined,
   DashboardOutlined,
   KeyOutlined,
+  UnlockOutlined,
 } from '@ant-design/icons';
 import { getData, getScores, getNcre } from './api.js';
-import { NEED_TOKEN_EVENT } from './auth.js';
+import { NEED_AUTH_EVENT, getSession, refreshSession, subscribe } from './auth.js';
 import ErrorBoundary from './ErrorBoundary.jsx';
 
 // 默认落地页（总览）静态引入，首屏无需再等一次异步请求；其余视图按需加载
@@ -25,7 +26,7 @@ const Degree = lazy(() => import('./views/Degree.jsx'));
 const Scores = lazy(() => import('./views/Scores.jsx'));
 const Ncre = lazy(() => import('./views/Ncre.jsx'));
 const CodeChanges = lazy(() => import('./views/CodeChanges.jsx'));
-const TokenModal = lazy(() => import('./TokenModal.jsx'));
+const AuthModal = lazy(() => import('./AuthModal.jsx'));
 
 const NAV = [
   { key: 'overview', icon: <AppstoreOutlined />, label: '总览' },
@@ -47,7 +48,9 @@ export default function App() {
   const [scores, setScores] = useState([]);
   const [ncre, setNcre] = useState(null);
   const [error, setError] = useState('');
-  const [tokenOpen, setTokenOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  // 写入验证状态（服务端签发的会话票据），解锁后侧边栏按钮显示剩余时长
+  const session = useSyncExternalStore(subscribe, getSession);
 
   useEffect(() => {
     const onHash = () => setView(currentView());
@@ -55,11 +58,17 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  // 写请求遇到 401 时 api.js 会广播，这里把密钥输入框弹出来
+  // 写请求被拒（401/429）时 api.js 会广播，这里把验证面板弹出来
   useEffect(() => {
-    const onNeedToken = () => setTokenOpen(true);
-    window.addEventListener(NEED_TOKEN_EVENT, onNeedToken);
-    return () => window.removeEventListener(NEED_TOKEN_EVENT, onNeedToken);
+    const onNeedAuth = () => setAuthOpen(true);
+    window.addEventListener(NEED_AUTH_EVENT, onNeedAuth);
+    return () => window.removeEventListener(NEED_AUTH_EVENT, onNeedAuth);
+  }, []);
+
+  // 票据到期后让按钮自己回到「未解锁」
+  useEffect(() => {
+    const timer = setInterval(refreshSession, 60 * 1000);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -113,10 +122,12 @@ export default function App() {
             size="small"
             type="text"
             className="key-btn"
-            icon={<KeyOutlined />}
-            onClick={() => setTokenOpen(true)}
+            icon={session ? <UnlockOutlined /> : <KeyOutlined />}
+            onClick={() => setAuthOpen(true)}
           >
-            写入密钥
+            {session
+              ? `已解锁 ${Math.max(1, Math.floor((session.expiresAt - Date.now()) / 3600000))}h`
+              : '写入验证'}
           </Button>
           <div>{meta.code} · 主考：南京航空航天大学</div>
         </div>
@@ -145,9 +156,9 @@ export default function App() {
           个人学习资料站 · 数据以江苏省教育考试院最新公告为准 · 整理于 {meta.updated}
         </Layout.Footer>
       </Layout>
-      {tokenOpen && (
+      {authOpen && (
         <Suspense fallback={null}>
-          <TokenModal open onClose={() => setTokenOpen(false)} />
+          <AuthModal open onClose={() => setAuthOpen(false)} />
         </Suspense>
       )}
     </Layout>
