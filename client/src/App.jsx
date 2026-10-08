@@ -14,6 +14,7 @@ import {
 import { getData, getScores, getNcre } from './api.js';
 import { NEED_TOKEN_EVENT } from './auth.js';
 import ErrorBoundary from './ErrorBoundary.jsx';
+
 // 默认落地页（总览）静态引入，首屏无需再等一次异步请求；其余视图按需加载
 import Overview from './views/Overview.jsx';
 
@@ -132,7 +133,9 @@ export default function App() {
               {view === 'plan' && <Plan courses={courses} />}
               {view === 'exemption' && <Exemption courses={courses} policies={policies} />}
               {view === 'degree' && <Degree degree={degree} />}
-              {view === 'scores' && <Scores courses={courses} scores={scores} onRefresh={refreshScores} />}
+              {view === 'scores' && (
+                <Scores degree={degree} courses={courses} scores={scores} onRefresh={refreshScores} />
+              )}
               {view === 'ncre' && ncre && <Ncre ncre={ncre} onRefresh={refreshNcre} />}
               {view === 'codechanges' && <CodeChanges codeChanges={codeChanges} />}
             </Suspense>

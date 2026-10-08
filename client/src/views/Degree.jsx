@@ -4,20 +4,37 @@ import { PageHeader } from '../components.jsx';
 
 const STORE_KEY = 'jszk-degree-actions-v1';
 
-export default function Degree({ degree }) {
-  const [done, setDone] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(STORE_KEY)) || {};
-    } catch {
-      return {};
+// 勾选状态按「行动内容」存，不按数组下标存 —— degree.json 的 actions 一旦增删或换序，
+// 下标会整体错位（勾选跑到别的条目上），内容做 key 则永远跟着那条行动走。
+// 旧版本存的是 {0:true,1:true} 形式的下标键，读取时按当前顺序迁移一次。
+function loadDone(actions) {
+  let raw = {};
+  try {
+    raw = JSON.parse(localStorage.getItem(STORE_KEY)) || {};
+  } catch {
+    raw = {};
+  }
+  const out = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (!value) continue;
+    if (/^\d+$/.test(key)) {
+      const action = actions[Number(key)];
+      if (action) out[action] = true;
+    } else {
+      out[key] = true;
     }
-  });
+  }
+  return out;
+}
+
+export default function Degree({ degree }) {
+  const [done, setDone] = useState(() => loadDone(degree.actions));
 
   useEffect(() => {
     localStorage.setItem(STORE_KEY, JSON.stringify(done));
   }, [done]);
 
-  const doneCount = degree.actions.filter((_, i) => done[i]).length;
+  const doneCount = degree.actions.filter((a) => done[a]).length;
 
   return (
     <div>
@@ -53,6 +70,7 @@ export default function Degree({ degree }) {
         rowKey="code"
         size="middle"
         pagination={false}
+        scroll={{ x: 'max-content' }}
         dataSource={degree.degreeCourses}
         columns={[
           {
@@ -108,15 +126,15 @@ export default function Degree({ degree }) {
         />
         <List
           dataSource={degree.actions}
-          renderItem={(a, i) => (
+          renderItem={(a) => (
             <List.Item
               style={{ padding: '8px 0', borderBottom: '1px dashed #f0f0f0' }}
             >
               <Checkbox
-                checked={!!done[i]}
-                onChange={() => setDone((d) => ({ ...d, [i]: !d[i] }))}
+                checked={!!done[a]}
+                onChange={() => setDone((d) => ({ ...d, [a]: !d[a] }))}
               >
-                <span style={done[i] ? { color: '#999', textDecoration: 'line-through' } : {}}>
+                <span style={done[a] ? { color: '#999', textDecoration: 'line-through' } : {}}>
                   {a}
                 </span>
               </Checkbox>

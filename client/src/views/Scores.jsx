@@ -26,11 +26,10 @@ import {
 import { DeleteOutlined, InboxOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { addScore, bulkAddScores, deleteScore, parseScore } from '../api.js';
+import { DEGREE_LINE, bestScore } from '../scoring.js';
 import { PageHeader } from '../components.jsx';
 
-const DEGREE_CODES = ['13000', '13003', '13015', '13180'];
-
-export default function Scores({ courses, scores, onRefresh }) {
+export default function Scores({ courses, degree, scores, onRefresh }) {
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [parsed, setParsed] = useState(null); // { fileName, text }
@@ -39,13 +38,20 @@ export default function Scores({ courses, scores, onRefresh }) {
   const [uploading, setUploading] = useState(false);
 
   const courseName = (code) => courses.find((c) => c.code === code)?.name || code;
-  const best = (code) =>
-    Math.max(-1, ...scores.filter((s) => s.code === code && s.category === '笔试').map((s) => s.score));
-  const eng = best('13000');
-  const bests = ['13003', '13015', '13180'].map(best);
+  const best = (code) => bestScore(scores, code);
+
+  // 学位课集合与「哪门是英语」都来自数据（courses.degree / degree.degreeCourses[].role），
+  // 不再在代码里硬编码课程号
+  const degreeCodeSet = new Set(courses.filter((c) => c.degree).map((c) => c.code));
+  const degreeCardsData = degree?.degreeCourses || [];
+  const engCourse = degreeCardsData.find((c) => c.role === 'english');
+  const avgCourses = degreeCardsData.filter((c) => c.role !== 'english');
+
+  const eng = engCourse ? best(engCourse.code) : null;
+  const avgScores = avgCourses.map((c) => best(c.code));
   const avg =
-    bests.every((v) => v >= 0)
-      ? Math.round((bests.reduce((a, b) => a + b, 0) / 3) * 10) / 10
+    avgScores.length && avgScores.every((v) => v != null)
+      ? Math.round((avgScores.reduce((a, b) => a + b, 0) / avgScores.length) * 10) / 10
       : null;
 
   // ---- 上传解析 ----
@@ -79,7 +85,9 @@ export default function Scores({ courses, scores, onRefresh }) {
     setSubmitting(true);
     try {
       const res = await bulkAddScores(items);
-      message.success(`已导入 ${res.added} 条成绩`);
+      message.success(
+        `已导入 ${res.added} 条成绩${res.skipped ? `，跳过重复 ${res.skipped} 条` : ''}`
+      );
       setParsed(null);
       setRows([]);
       onRefresh();
@@ -109,18 +117,26 @@ export default function Scores({ courses, scores, onRefresh }) {
   };
 
   const remove = async (id) => {
-    await deleteScore(id);
-    onRefresh();
+    try {
+      await deleteScore(id);
+      onRefresh();
+    } catch (e) {
+      message.error(e.message || '删除失败');
+    }
   };
 
   const degreeCards = [
-    { title: '英语 13000（单科 ≥ 70）', value: eng >= 0 ? `${eng} 分` : '未录入', pass: eng >= 0 ? eng >= 70 : null },
-    {
-      title: '三门学位课均分（≥ 70）',
-      value: avg !== null ? `${avg} 分` : '未录齐',
-      pass: avg !== null ? avg >= 70 : null,
+    engCourse && {
+      title: `${engCourse.name} ${engCourse.code}（单科 ≥ ${DEGREE_LINE}）`,
+      value: eng != null ? `${eng} 分` : '未录入',
+      pass: eng != null ? eng >= DEGREE_LINE : null,
     },
-  ];
+    avgCourses.length > 0 && {
+      title: `${avgCourses.length} 门学位课均分（≥ ${DEGREE_LINE}）`,
+      value: avg !== null ? `${avg} 分` : '未录齐',
+      pass: avg !== null ? avg >= DEGREE_LINE : null,
+    },
+  ].filter(Boolean);
 
   return (
     <div>
@@ -247,6 +263,7 @@ export default function Scores({ courses, scores, onRefresh }) {
       <Table
         rowKey="id"
         size="middle"
+        scroll={{ x: 'max-content' }}
         pagination={{ pageSize: 10, hideOnSinglePage: true }}
         locale={{
           emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有成绩记录，考完一门就上来记一笔吧" />,
@@ -265,7 +282,7 @@ export default function Scores({ courses, scores, onRefresh }) {
               <Space size={6} wrap>
                 <Typography.Text code>{r.code}</Typography.Text>
                 <span>{courseName(r.code)}</span>
-                {DEGREE_CODES.includes(r.code) && <Tag color="magenta">★</Tag>}
+                {degreeCodeSet.has(r.code) && <Tag color="magenta">★</Tag>}
                 {r.originalCode && <Tag color="default">原 {r.originalCode}</Tag>}
               </Space>
             ),
@@ -283,8 +300,8 @@ export default function Scores({ courses, scores, onRefresh }) {
                 <Tag color={v >= 60 ? 'green' : 'red'}>
                   {v >= 60 ? '合格' : '未通过'}
                 </Tag>
-                {DEGREE_CODES.includes(r.code) && v >= 60 && v < 70 && (
-                  <Tag color="orange">学位线未达 70</Tag>
+                {degreeCodeSet.has(r.code) && r.category !== '论文' && v >= 60 && v < DEGREE_LINE && (
+                  <Tag color="orange">学位线未达 {DEGREE_LINE}</Tag>
                 )}
               </Space>
             ),
@@ -317,6 +334,7 @@ export default function Scores({ courses, scores, onRefresh }) {
             rowKey="code"
             size="small"
             pagination={false}
+            scroll={{ x: 'max-content' }}
             dataSource={rows}
             columns={[
               {
@@ -337,7 +355,7 @@ export default function Scores({ courses, scores, onRefresh }) {
                   <Space size={6} wrap>
                     <Typography.Text code>{r.code}</Typography.Text>
                     <span>{r.name}</span>
-                    {DEGREE_CODES.includes(r.code) && <Tag color="magenta">★</Tag>}
+                    {degreeCodeSet.has(r.code) && <Tag color="magenta">★</Tag>}
                     {r.originalCode && <Tag>原 {r.originalCode}</Tag>}
                   </Space>
                 ),

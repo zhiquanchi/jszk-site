@@ -23,6 +23,25 @@ docker run -d --name jszk-site -p 3001:3001 -v jszk-store:/app/store jszk-site
 
 打开 http://localhost:3001（后端经 Bun 编译为单文件可执行程序，镜像 ~130MB，Express 托管前端产物）。
 
+生产模式下前端产物由 Express 直接托管：响应默认 gzip 压缩，`/assets/` 下带内容哈希的文件发 `immutable` 长缓存，`index.html` 每次回源校验（`no-cache`）。前端按视图分包：首屏只加载「总览」相关 chunk（约 270 KB gzip），其余页面切到时再取。
+
+### 写入鉴权（ADMIN_TOKEN）
+
+站点公网可达，写接口（成绩增删、NCRE 批次、通知）凭 `ADMIN_TOKEN` 校验：
+
+| 变量 | 说明 |
+|------|------|
+| `ADMIN_TOKEN` | 写接口密钥。**未配置时不校验**（本地开发零配置），公网部署务必设置 |
+
+设置后在页面左下角「🔑 写入密钥」粘贴一次即可（存浏览器 localStorage，随写请求以 `X-Auth-Token` 头发送，不进仓库与构建产物）。未填或填错时写操作返回 401 并自动弹出输入框。
+
+```bash
+# 生成一个密钥
+openssl rand -hex 24
+# 服务器上写进环境文件（与 DM_* 同一个 --env-file）
+echo 'ADMIN_TOKEN=生成的密钥' >> /root/jszk-mail.env
+```
+
 ### 邮件推送（阿里云 DirectMail）
 
 通知接口（NCRE 新公告等）在以下环境变量齐备时自动叠加邮件推送，缺省则只落盘+日志（本地开发零配置）：
@@ -35,7 +54,7 @@ docker run -d --name jszk-site -p 3001:3001 -v jszk-store:/app/store jszk-site
 | `DM_FROM_ALIAS` | 发件人昵称（默认「自考站监控」） |
 | `DM_ENDPOINT` | 默认 `https://dm.aliyuncs.com` |
 
-凭证文件 `.env.mail`（gitignore）本地留存，服务器上放 `/root/jszk-mail.env`（chmod 600），`docker run --env-file` 注入。投递结果记录在 `notifications.json` 的 `delivered` 字段：`emailed` / `logged` / `email_failed: 原因`。
+凭证文件 `.env.mail`（gitignore）本地留存，服务器上放 `/root/jszk-mail.env`（chmod 600），`docker run --env-file` 注入。投递结果记录在 `notifications.json` 的 `delivered` 字段：`emailed` / `logged` / `email_failed: 原因`，在「NCRE 报名」页的「通知记录」表格「投递」列可直接看到。
 
 > 注意：API 创建的发信地址用 `ModifyPWByDomain` 设的 SMTP 密码实测不生效（535），故走 SingleSendMail API 而非 SMTP。
 
@@ -55,31 +74,38 @@ npm start              # Express 默认 3001 端口，自动托管 client/dist
 
 ```
 web/
-├── client/          React + antd 前端
-│   └── src/views/   总览 / 考试计划 / 免考中心 / 学位攻略 / 成绩记录 / 代码变更
-├── server/          Express API
+├── client/          React + antd 前端（视图按需分包加载）
+│   └── src/
+│       ├── views/   总览 / 学习清单 / 考试计划 / 免考中心 / 学位攻略 / 成绩记录 / NCRE 报名 / 代码变更
+│       ├── scoring.js    成绩判读唯一口径（60 分合格线、学位 70 分线、论文类不计入课程口径）
+│       └── auth.js       写入密钥（localStorage ↔ X-Auth-Token）
+├── server/          Express API（store.js 负责可变数据的原子读写）
 ├── data/            数据层（改这里即可更新站点内容，不用动代码）
 │   ├── courses.json      22 门课程 + 每门课的免考策略（路径/条件/材料/学位影响）
 │   ├── policies.json     免考政策（证书类/学历类/限制/流程）
-│   ├── degree.json       南航学位要求、红线、行动清单
+│   ├── degree.json       南航学位要求、红线、行动清单；degreeCourses[].role = english/average 决定成绩页的达标卡
 │   ├── codeChanges.json  课程代码变更映射（2024 版计划调整）
-│   └── scores.json       成绩记录（运行时生成，已挂卷持久化）
+│   └── scores.json       成绩记录（随 git 跟踪的副本；运行时的可变数据写在 STORE_DIR）
 ```
+
+运行时的可变数据（成绩 / 通知 / NCRE 批次与快照）统一走 `STORE_DIR`（默认 `data/`，容器内为挂载卷 `/app/store`），写入采用「临时文件 + rename」，避免写到一半被杀留下截断的 JSON。
 
 ## API
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/data` | 站点全部静态数据（课程/政策/学位/代码变更） |
-| GET | `/api/scores` | 成绩列表 |
-| POST | `/api/scores` | 新增成绩（旧课程代码自动归一为现行代码） |
-| POST | `/api/scores/bulk` | 批量导入（成绩单解析确认后） |
-| DELETE | `/api/scores/:id` | 删除成绩 |
-| POST | `/api/scores/parse` | 上传成绩单（multipart 字段 `file`）。本地解析已移除，**统一预留大模型通道**——替换 `server/index.js` 的 `parseFile` 实现即可，接口形状不变 |
-| GET | `/api/ncre` | 上海 NCRE 报名/考试时间追踪 + 通知记录 |
-| POST | `/api/ncre` | 更新 NCRE 批次数据（sessions） |
-| POST | `/api/ncre/run` | 手动触发一次 NCRE 公告抓取检查 |
-| POST | `/api/notify` | 通知接口：`{event, title, message}`，落盘+日志；配置 DirectMail 环境变量后自动叠加邮件推送 |
+| 方法 | 路径 | 鉴权 | 说明 |
+|------|------|------|------|
+| GET | `/api/data` | — | 站点全部静态数据（课程/政策/学位/代码变更） |
+| GET | `/api/scores` | — | 成绩列表 |
+| POST | `/api/scores` | 🔑 | 新增成绩（旧课程代码自动归一为现行代码） |
+| POST | `/api/scores/bulk` | 🔑 | 批量导入（成绩单解析确认后）；与已有记录同课同类型同分数的条目自动跳过，返回 `{added, skipped}` |
+| DELETE | `/api/scores/:id` | 🔑 | 删除成绩 |
+| POST | `/api/scores/parse` | 🔑 | 上传成绩单（multipart 字段 `file`）。本地解析已移除，**统一预留大模型通道**——替换 `server/index.js` 的 `parseFile` 实现即可；只回文本时用本地规则兜底抽取候选 |
+| GET | `/api/ncre` | — | 上海 NCRE 报名/考试时间追踪 + 通知记录 |
+| POST | `/api/ncre` | 🔑 | 更新 NCRE 批次数据（sessions） |
+| POST | `/api/ncre/run` | 🔑 | 手动触发一次 NCRE 公告抓取检查（与定时任务互斥，不并发） |
+| POST | `/api/notify` | 🔑 | 通知接口：`{event, title, message}`，落盘+日志；配置 DirectMail 环境变量后自动叠加邮件推送 |
+
+🔑 = 需请求头 `X-Auth-Token`（服务端配置了 `ADMIN_TOKEN` 时才校验）。
 
 ## NCRE 报名追踪（服务内每日定时任务）
 

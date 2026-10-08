@@ -68,6 +68,7 @@ function PerCourseStrategy({ courses }) {
         rowKey="code"
         size="middle"
         pagination={false}
+        scroll={{ x: 'max-content' }}
         dataSource={list}
         columns={columns}
         expandable={{
@@ -88,6 +89,7 @@ function CertPolicy({ policies }) {
       rowKey="cert"
       size="middle"
       pagination={false}
+      scroll={{ x: 'max-content' }}
       dataSource={policies.cert.rows}
       columns={[
         { title: '持有的证书', dataIndex: 'cert', width: 260 },

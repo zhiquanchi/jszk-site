@@ -68,6 +68,7 @@ export default function Ncre({ ncre, onRefresh }) {
         rowKey="session"
         size="middle"
         pagination={false}
+        scroll={{ x: 'max-content' }}
         dataSource={sessions}
         columns={[
           { title: '批次', dataIndex: 'session', width: 200 },
@@ -133,6 +134,7 @@ export default function Ncre({ ncre, onRefresh }) {
             rowKey="url"
             size="small"
             pagination={{ pageSize: 5, hideOnSinglePage: true }}
+            scroll={{ x: 'max-content' }}
             style={{ marginBottom: 16 }}
             dataSource={announcements}
             columns={[
@@ -158,15 +160,19 @@ export default function Ncre({ ncre, onRefresh }) {
       )}
 
       <Typography.Title level={4} className="section-title">
-        🔔 通知接口（预留）
+        🔔 通知渠道
       </Typography.Title>
       <Card size="small" style={{ marginBottom: 16 }}>
-        <Typography.Paragraph>
+        <Typography.Paragraph style={{ marginBottom: 6 }}>
           POST <Typography.Text code>/api/notify</Typography.Text>，body：
           <Typography.Text code>{' { event, title, message }'}</Typography.Text>
-          。定时任务在「报名窗口开放 / 时间变动」时调用。当前为落盘占位，后续可接入邮件、webhook
-          等渠道（在 <Typography.Text code>server/index.js</Typography.Text> 的 notify 处理器里分发）。
+          。新公告、报名窗口变化等事件都走这里；服务端先落盘记录，再按配置叠加推送渠道。
         </Typography.Paragraph>
+        <Typography.Text type="secondary">
+          邮件渠道：配置阿里云 DirectMail 的 <Typography.Text code>DM_*</Typography.Text>{' '}
+          环境变量后自动发信（收件箱见下方「投递」列）；未配置时只落盘。写入接口需在页面左下角
+          「写入密钥」填入 <Typography.Text code>ADMIN_TOKEN</Typography.Text>。
+        </Typography.Text>
       </Card>
 
       <Typography.Title level={4} className="section-title">
@@ -181,12 +187,30 @@ export default function Ncre({ ncre, onRefresh }) {
           rowKey="id"
           size="small"
           pagination={{ pageSize: 8, hideOnSinglePage: true }}
+          scroll={{ x: 'max-content' }}
           dataSource={[...notifications].reverse()}
           columns={[
             { title: '时间', dataIndex: 'time', width: 190, render: (t) => <Typography.Text code>{t}</Typography.Text> },
             { title: '事件', dataIndex: 'event', width: 160 },
             { title: '标题', dataIndex: 'title', width: 180 },
             { title: '内容', dataIndex: 'message' },
+            {
+              title: '投递',
+              dataIndex: 'delivered',
+              width: 130,
+              render: (d) => {
+                if (d === 'emailed') return <Tag color="green">已发邮件</Tag>;
+                if (d === 'logged') return <Tag>仅落盘</Tag>;
+                if (String(d || '').startsWith('email_failed')) {
+                  return (
+                    <Tag color="red" title={d}>
+                      邮件失败
+                    </Tag>
+                  );
+                }
+                return <Tag>{d || '—'}</Tag>;
+              },
+            },
           ]}
         />
       )}

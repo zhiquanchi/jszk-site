@@ -69,6 +69,9 @@ app.get('/api/data', (req, res) => {
 const readScores = () => readJson(SCORES_FILE, []);
 const writeScores = (scores) => writeJsonAtomic(SCORES_FILE, scores);
 
+// 重复判定键：同一门课 + 同一类型 + 同分数视为同一条记录（重复导入同一张成绩单）
+const dedupeKey = (r) => `${r.code}|${r.category}|${r.score}`;
+
 // 录入时若用了旧课程代码，自动归一到现行代码并保留原代码痕迹
 function normalizeCode(rawCode) {
   const map = buildCodeMap();
@@ -80,6 +83,7 @@ function normalizeCode(rawCode) {
 function makeRecord(body) {
   const { code: rawCode, score, category, date, note } = body ?? {};
   if (!rawCode || typeof score !== 'number' || Number.isNaN(score)) return null;
+  if (score < 0 || score > 100) return null;
   const { code, originalCode } = normalizeCode(String(rawCode));
   return {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -98,14 +102,15 @@ app.get('/api/scores', (req, res) => {
 
 app.post('/api/scores', requireToken, (req, res) => {
   const record = makeRecord(req.body);
-  if (!record) return res.status(400).json({ error: 'code 与数字型 score 为必填' });
+  if (!record) return res.status(400).json({ error: 'code 与 0–100 的数字型 score 为必填' });
   const scores = readScores();
   scores.push(record);
   writeScores(scores);
   res.status(201).json(record);
 });
 
-// 批量导入（成绩单解析确认后使用）
+// 批量导入（成绩单解析确认后使用）：与已有记录重复的（同课+同类型+同分）跳过，
+// 重复导入同一张成绩单不会产生双份记录；分数不同则视为重考新记录照常写入。
 app.post('/api/scores/bulk', requireToken, (req, res) => {
   const items = Array.isArray(req.body) ? req.body : req.body?.items;
   if (!Array.isArray(items) || items.length === 0) {
@@ -116,9 +121,20 @@ app.post('/api/scores/bulk', requireToken, (req, res) => {
     return res.status(400).json({ error: '存在无效记录（code/score 缺失或非法）' });
   }
   const scores = readScores();
-  scores.push(...records);
-  writeScores(scores);
-  res.status(201).json({ added: records.length, records });
+  const existing = new Set(scores.map(dedupeKey));
+  const added = [];
+  let skipped = 0;
+  for (const r of records) {
+    const key = dedupeKey(r);
+    if (existing.has(key)) {
+      skipped += 1;
+      continue;
+    }
+    existing.add(key);
+    added.push(r);
+  }
+  if (added.length) writeScores([...scores, ...added]);
+  res.status(201).json({ added: added.length, skipped, records: added });
 });
 
 app.delete('/api/scores/:id', requireToken, (req, res) => {
@@ -248,13 +264,14 @@ async function parseFile(file) {
   );
 }
 
-// 从文本中抽取「课程代码 + 分数」候选
+// 从识别文本中抽取「课程代码 + 分数」候选（大模型通道返回文本后由其兜底抽取）
 function parseCandidates(text) {
-  const knownCodes = new Set(courses().map((c) => c.code));
+  const list = courses(); // 一次性读盘：循环里不要再碰磁盘
+  const names = new Map(list.map((c) => [c.code, c.name]));
   const map = buildCodeMap();
   const found = new Map();
 
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of String(text || '').split(/\r?\n/)) {
     // 全角数字转半角
     const line = raw.replace(/[０-９]/g, (d) =>
       String.fromCharCode(d.charCodeAt(0) - 0xfee0)
@@ -265,13 +282,13 @@ function parseCandidates(text) {
     if (score < 0 || score > 100) continue;
     const rawCode = m[1];
     const mapped = map[rawCode] || rawCode;
-    if (!knownCodes.has(mapped)) continue;
+    if (!names.has(mapped)) continue;
     const prev = found.get(mapped);
     if (!prev || score > prev.score) {
       found.set(mapped, {
         code: mapped,
         originalCode: map[rawCode] ? rawCode : undefined,
-        name: courses().find((c) => c.code === mapped)?.name || mapped,
+        name: names.get(mapped),
         score,
       });
     }
@@ -282,7 +299,10 @@ function parseCandidates(text) {
 app.post('/api/scores/parse', requireToken, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: '未收到文件' });
   try {
-    const { text, candidates } = await parseFile(req.file);
+    const parsed = await parseFile(req.file);
+    const text = parsed?.text || '';
+    // 大模型只回文本时，用本地规则兜底抽取候选
+    const candidates = parsed?.candidates?.length ? parsed.candidates : parseCandidates(text);
     res.json({ fileName: req.file.originalname, text, candidates });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message || '解析失败' });

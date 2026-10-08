@@ -80,6 +80,7 @@ export default function Plan({ courses }) {
         rowKey="code"
         size="middle"
         pagination={false}
+        scroll={{ x: 'max-content' }}
         dataSource={list}
         columns={columns}
         rowClassName={(r) => (r.degree ? 'row-degree' : '')}

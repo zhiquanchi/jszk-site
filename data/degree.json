@@ -32,25 +32,29 @@
       "code": "13000",
       "name": "英语（专升本）",
       "target": "单科 ≥ 70",
-      "credits": 7
+      "credits": 7,
+      "role": "english"
     },
     {
       "code": "13003",
       "name": "数据结构与算法",
       "target": "三门均分 ≥ 70",
-      "credits": 4
+      "credits": 4,
+      "role": "average"
     },
     {
       "code": "13015",
       "name": "计算机系统原理",
       "target": "三门均分 ≥ 70",
-      "credits": 4
+      "credits": 4,
+      "role": "average"
     },
     {
       "code": "13180",
       "name": "操作系统",
       "target": "三门均分 ≥ 70",
-      "credits": 4
+      "credits": 4,
+      "role": "average"
     }
   ],
   "redLines": [

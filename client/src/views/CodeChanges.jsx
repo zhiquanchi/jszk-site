@@ -29,6 +29,7 @@ export default function CodeChanges({ codeChanges }) {
         rowKey="from"
         size="middle"
         pagination={false}
+        scroll={{ x: 'max-content' }}
         dataSource={codeChanges}
         columns={[
           {

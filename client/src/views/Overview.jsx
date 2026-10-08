@@ -10,14 +10,14 @@ import {
   TrophyOutlined,
 } from '@ant-design/icons';
 import { PageHeader } from '../components.jsx';
+import { bestScore } from '../scoring.js';
 
 export default function Overview({ meta, courses, degree, scores }) {
   const totalCredits = courses.reduce((s, c) => s + c.credits, 0);
   const degreeCount = courses.filter((c) => c.degree).length;
   const practiceCount = courses.filter((c) => c.practice).length;
-  // 只统计现行计划内的课程（旧计划代码如 04737、02197 不计入；已按映射归一的除外）
-  const planCodes = new Set(courses.map((c) => c.code));
-  const recorded = new Set(scores.filter((s) => planCodes.has(s.code)).map((s) => s.code)).size;
+  // 与「学习清单」同一口径：只算现行计划内的课程，且论文类不计（见 scoring.js）
+  const recorded = courses.filter((c) => bestScore(scores, c.code) != null).length;
 
   const stats = [
     { icon: <BookOutlined />, color: '#1677ff', bg: '#e6f4ff', label: '课程总门数', value: courses.length, suffix: '门' },

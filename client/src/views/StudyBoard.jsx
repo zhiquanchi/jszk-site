@@ -15,6 +15,7 @@ import {
   Typography,
 } from 'antd';
 import { CourseCell, ExemptionDetail, GroupTag, PageHeader, StatusTag } from '../components.jsx';
+import { PASS_LINE, bestScore } from '../scoring.js';
 
 const VIEWS = [
   { key: 'all', label: '全部计划' },
@@ -24,11 +25,6 @@ const VIEWS = [
   { key: 'exempt', label: '未通过但可免考' },
 ];
 
-function bestScore(scores, code) {
-  const values = scores.filter((s) => s.code === code && s.category !== '论文').map((s) => s.score);
-  return values.length ? Math.max(...values) : null;
-}
-
 export default function StudyBoard({ courses, scores }) {
   const [view, setView] = useState('all');
   const [query, setQuery] = useState('');
@@ -37,7 +33,7 @@ export default function StudyBoard({ courses, scores }) {
     () =>
       courses.map((course) => {
         const score = bestScore(scores, course.code);
-        const state = score == null ? 'todo' : score >= 60 ? 'passed' : 'failed';
+        const state = score == null ? 'todo' : score >= PASS_LINE ? 'passed' : 'failed';
         const canExempt = state !== 'passed' && course.status !== 'never-exempt' && (course.exemption?.paths || []).length > 0;
         return { ...course, score, state, canExempt };
       }),
@@ -80,7 +76,7 @@ export default function StudyBoard({ courses, scores }) {
       title: '我的成绩',
       width: 110,
       render: (_, r) =>
-        r.score == null ? <Tag>未录入</Tag> : <Tag color={r.score >= 60 ? 'green' : 'red'}>{r.score} · {r.score >= 60 ? '合格' : '未通过'}</Tag>,
+        r.score == null ? <Tag>未录入</Tag> : <Tag color={r.score >= PASS_LINE ? 'green' : 'red'}>{r.score} · {r.score >= PASS_LINE ? '合格' : '未通过'}</Tag>,
     },
     {
       title: '当前处理',
@@ -100,13 +96,13 @@ export default function StudyBoard({ courses, scores }) {
       <PageHeader
         title="学习清单"
         desc="把2024版考试计划和你的成绩合并，直接看到下一步要做什么"
-        extra={<Tag color="blue">60分合格 · 学位课另看70分</Tag>}
+        extra={<Tag color="blue">{PASS_LINE}分合格 · 学位课另看70分</Tag>}
       />
 
       <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
         {[
           ['计划课程', counts.all, '全部课程'],
-          ['已通过', counts.passed, '成绩 ≥ 60'],
+          ['已通过', counts.passed, `成绩 ≥ ${PASS_LINE}`],
           ['未通过', counts.failed, '需要重考'],
           ['未考', counts.todo, '还没有成绩'],
           ['可免考路径', counts.exempt, '未通过/未考且存在条件'],
@@ -139,6 +135,7 @@ export default function StudyBoard({ courses, scores }) {
         style={{ marginTop: 14 }}
         rowKey="code"
         size="middle"
+        scroll={{ x: 'max-content' }}
         pagination={{ pageSize: 12, hideOnSinglePage: true }}
         dataSource={list}
         columns={columns}

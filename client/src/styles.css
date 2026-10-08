@@ -218,4 +218,16 @@ tr.row-degree > td {
   .page-head {
     margin-bottom: 12px;
   }
+
+  /* 分段筛选（全部/公共课/学位课…）选项多，窄屏下自己横向滚动，
+     否则会把整页撑出横向滚动条 */
+  .ant-segmented {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .ant-segmented::-webkit-scrollbar {
+    display: none;
+  }
 }
